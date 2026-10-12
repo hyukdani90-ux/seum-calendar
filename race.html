@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>믿음의 경주</title>
-<meta property="og:title" content="믿음의 경주 - 이번 주 목장 실천율">
+<meta property="og:title" content="믿음의 경주 - 이번 달 목장 실천율">
 <meta property="og:description" content="말씀·기도·통독·예배, 함께 달려갑니다">
 <meta property="og:type" content="website">
 <meta property="og:image" content="https://hyukdani90-ux.github.io/seum-calendar/icons/og-race.png">
@@ -150,12 +150,12 @@
     <p class="verse">“우리 앞에 당한 경주를 인내로써 경주하며 믿음의 주요 또 온전케 하시는 이인 예수를 바라보자” (히 12:1-2)</p>
   </header>
   <div class="meta">
-    <span id="week">이번 주</span>
+    <span id="period">이번 달</span>
     <span id="updated"></span>
     <span id="demo" class="demo" hidden>예시 데이터로 보는 중 (API 주소 미설정)</span>
   </div>
 
-  <section class="card" aria-label="목장별 이번 주 실천율">
+  <section class="card" aria-label="목장별 이번 달 실천율">
     <div id="lanes"></div>
     <div class="legend" id="legend"></div>
   </section>
@@ -176,7 +176,7 @@
   const COLORS = ['var(--series-1)', 'var(--series-2)', 'var(--series-3)'];
 
   const DEMO = {
-    weekStart: '', days: 4, updatedAt: new Date().toISOString(),
+    period: 'month', month: '', days: 12, updatedAt: new Date().toISOString(),
     groups: [
       { group: '나종혁 목장', members: 8, rate: 0.72, items: [{label:'말씀',rate:.81},{label:'기도',rate:.75},{label:'통독',rate:.56},{label:'예배',rate:.75}] },
       { group: '임백호 목장', members: 7, rate: 0.58, items: [{label:'말씀',rate:.64},{label:'기도',rate:.61},{label:'통독',rate:.43},{label:'예배',rate:.64}] },
@@ -235,7 +235,11 @@
       if (rate >= 1) setTimeout(() => runner.classList.add('done'), 2400);
     });
 
-    $('week').textContent = data.weekStart ? `${data.weekStart} 주간 · ${data.days}일째` : `이번 주 · ${data.days}일째`;
+    // 월간(기본). 시트 백엔드를 아직 새 버전으로 배포하지 않았다면 주간 데이터가 와도 그대로 보여준다
+    const monthNum = data.month ? +data.month.slice(5, 7) : new Date().getMonth() + 1;
+    $('period').textContent = data.weekStart
+      ? `${data.weekStart} 주간 · ${data.days}일째`
+      : `${monthNum}월 · ${data.days}일째`;
     $('updated').textContent = '업데이트 ' + new Date(data.updatedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
 
     const labels = (groups[0] && groups[0].items || []).map(it => it.label);

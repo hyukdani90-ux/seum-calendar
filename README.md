@@ -35,9 +35,9 @@ BOOKS: {
 ## 실천율 계산
 
 - 개인 화면: 그 달 체크 수 ÷ (그 달 일수 × 4) — 기존 앱과 같음
-- 목장(믿음의 경주): 목장원 전원의 이번 주 체크 수 ÷ (목장원 수 × 지난 일수 × 4)
+- 목장(믿음의 경주): 목장원 전원의 이번 달 체크 수 ÷ (목장원 수 × 이번 달 오늘까지 일수 × 4)
   - 목장원 = 그 목장으로 한 번이라도 기록한 사람, 기록하지 않은 날은 0
-  - 한 주는 주일에 시작 (`apps-script/Code.gs`의 `WEEK_START_DAY`)
+  - 매달 1일에 새 경주가 시작됩니다
 
 ## 구글 시트 백엔드
 
@@ -50,7 +50,8 @@ BOOKS: {
 ```
 POST {URL}   { group, name, date, word, prayer, reading, worship }        하루 저장 (같은 날은 덮어씀)
 POST {URL}   { group, name, records: [{ date, word, ... }, ...] }          여러 날 한 번에
-GET  {URL}?action=summary                                                  목장별 이번 주 실천율
+GET  {URL}?action=summary[&month=YYYY-MM]                                  목장별 월간 실천율 (기본: 이번 달)
+GET  {URL}?action=summary&week=YYYY-MM-DD                                  목장별 주간 실천율
 GET  {URL}?action=mine&group=..&name=..&month=YYYY-MM                      내 한 달 기록
 ```
 본문은 `Content-Type: text/plain`으로 보내야 브라우저 CORS 사전 요청 없이 전달됩니다.

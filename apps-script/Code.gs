@@ -2,11 +2,12 @@
  * 믿음의 경주 - 경건생활 체크 백엔드 (Google Apps Script 웹앱)
  *
  * 개인이 매일 4항목(말씀·기도·통독·예배)을 체크해 보내면 구글 시트에 한 줄씩 저장하고,
- * 결과 화면은 목장별 이번 주 실천율을 읽어 간다.
+ * 결과 화면은 목장별 이번 달 실천율을 읽어 간다.
  *
  * POST  { group, name, date: "YYYY-MM-DD", word, prayer, reading, worship }  -> 기록 저장(같은 날 재입력 시 덮어씀)
  * POST  { group, name, records: [{ date, word, prayer, reading, worship }, ...] } -> 여러 날 한 번에 저장
- * GET   ?action=summary[&week=YYYY-MM-DD]                                     -> 목장별 주간 실천율
+ * GET   ?action=summary[&month=YYYY-MM]                                       -> 목장별 월간 실천율 (기본: 이번 달)
+ * GET   ?action=summary&week=YYYY-MM-DD                                       -> 목장별 주간 실천율
  * GET   ?action=mine&group=..&name=..[&week=YYYY-MM-DD | &month=YYYY-MM]       -> 내 기록(체크 달력 복원용)
  */
 
@@ -24,7 +25,7 @@ var TZ = 'Asia/Seoul';
 function doGet(e) {
   var p = (e && e.parameter) || {};
   try {
-    if (p.action === 'summary') return json_(summary_(p.week));
+    if (p.action === 'summary') return json_(p.week ? weekSummary_(p.week) : monthSummary_(p.month));
     if (p.action === 'mine') return json_(mine_(p.group, p.name, p.week, p.month));
     return json_({ ok: true, groups: GROUPS });
   } catch (err) {
@@ -81,22 +82,23 @@ function saveCheck_(b) {
 }
 
 /**
- * 목장 실천율 = 목장원 전원의 (이번 주 체크 수 합) / (목장원 수 × 지난 일수 × 4)
- * 목장원 = 그 목장으로 한 번이라도 기록한 사람. 기록하지 않은 날은 0으로 계산한다.
+ * 목장 실천율 = 목장원 전원의 기간 내 체크 수 / (목장원 수 × 지난 일수 × 4)
+ * 목장원 = 그 목장으로 기간 끝까지 한 번이라도 기록한 사람. 기록하지 않은 날은 0으로 계산한다.
+ * 지난 일수 = 진행 중인 기간이면 오늘까지, 지난 기간이면 기간 전체.
  */
-function summary_(week) {
-  var start = week || weekStart_(today_());
-  var days = elapsedDays_(start);
+function aggregate_(start, end) {
+  var last = end < today_() ? end : today_();
+  var days = Math.max(1, Math.round((parse_(last) - parse_(start)) / 86400000) + 1);
   var rows = rows_();
 
-  var result = GROUPS.map(function (g) {
+  var groups = GROUPS.map(function (g) {
     var members = {};
     var checked = 0;
     var itemTotals = [0, 0, 0, 0];
     rows.forEach(function (r) {
-      if (r.group !== g || r.date > addDays_(start, 6)) return;
+      if (r.group !== g || r.date > end) return;
       members[r.name] = true;
-      if (r.weekStart !== start) return;
+      if (r.date < start) return;
       ITEMS.forEach(function (k, i) { checked += r[k]; itemTotals[i] += r[k]; });
     });
     var memberCount = Object.keys(members).length;
@@ -111,7 +113,26 @@ function summary_(week) {
     };
   });
 
-  return { ok: true, weekStart: start, days: days, updatedAt: new Date().toISOString(), groups: result };
+  return { ok: true, start: start, end: end, days: days, updatedAt: new Date().toISOString(), groups: groups };
+}
+
+function monthSummary_(month) {
+  var ym = /^\d{4}-\d{2}$/.test(month || '') ? month : today_().slice(0, 7);
+  var start = ym + '-01';
+  var next = parse_(start);
+  next.setUTCMonth(next.getUTCMonth() + 1);
+  var out = aggregate_(start, addDays_(fmt_(next), -1));
+  out.period = 'month';
+  out.month = ym;
+  return out;
+}
+
+function weekSummary_(week) {
+  var start = weekStart_(week);
+  var out = aggregate_(start, addDays_(start, 6));
+  out.period = 'week';
+  out.weekStart = start;
+  return out;
 }
 
 function mine_(group, name, week, month) {
@@ -179,12 +200,6 @@ function weekStart_(ymd) {
   var d = parse_(ymd);
   var diff = (d.getUTCDay() - WEEK_START_DAY + 7) % 7;
   return addDays_(ymd, -diff);
-}
-
-// 이번 주라면 오늘까지 지난 일수, 지난 주라면 7
-function elapsedDays_(start) {
-  var diff = Math.round((parse_(today_()) - parse_(start)) / 86400000) + 1;
-  return Math.max(1, Math.min(7, diff));
 }
 
 function json_(obj) {
