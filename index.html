@@ -702,6 +702,7 @@
         const data = await res.json();
         if (!data.ok) throw new Error(data.error);
         showToast('목장에 전달됨 ✓');
+        adoptProfile(data.profile);
       } catch (e) {
         showToast('전송 실패 – 이 휴대폰에는 저장됨');
       }
@@ -723,7 +724,9 @@
       try {
         const res = await fetch(`${API_URL}?${qs}`);
         const data = await res.json();
-        if (!data.ok || key !== monthKey()) return;
+        if (!data.ok) return;
+        adoptProfile(data.profile);
+        if (key !== monthKey()) return;
         data.records.forEach(r => {
           if (pendingSend[r.date]) return; // 보내는 중인 날은 화면 상태 유지
           const day = +r.date.slice(8, 10);
@@ -734,6 +737,16 @@
         renderAllViews();
         updateProgress();
       } catch (e) {}
+    }
+
+    // 관리자가 목장·이름을 바꿔 준 경우 이 휴대폰의 설정도 따라 바꾼다
+    function adoptProfile(p) {
+      if (!p || !p.group || !p.name || !profile) return;
+      if (p.group === profile.group && p.name === profile.name) return;
+      profile = { group: p.group, name: p.name };
+      safeSetItem('seum_profile', JSON.stringify(profile));
+      renderProfile();
+      setTimeout(() => showToast(`${p.group} · ${p.name}(으)로 바뀌었어요`), 1900);
     }
 
     let toastTimer;

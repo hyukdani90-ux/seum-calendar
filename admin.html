@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>관리자 - 세움 신앙점검표</title>
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F3EFE7;
+    --card: #FFFFFF;
+    --soft: #FAF6EE;
+    --line: #E2D8CA;
+    --ink: #382F2D;
+    --ink-2: #6B5D57;
+    --ink-3: #9A8C85;
+    --brown: #544641;
+    --brown-2: #3D332F;
+    --accent: #B47C56;
+    --danger: #C0392B;
+    --g1: #2a78d6;
+    --g2: #eb6834;
+    --g3: #1baf7a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button, input, select { font: inherit; color: inherit; }
+  main { max-width: 760px; margin: 0 auto; padding: max(16px, env(safe-area-inset-top)) 16px 48px; }
+  [hidden] { display: none !important; }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 18px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+  .btn { border: 1px solid var(--line); background: var(--card); border-radius: 12px; padding: 9px 14px; font-weight: 700; font-size: 14px; cursor: pointer; }
+  .btn:hover { background: var(--soft); }
+  .btn.dark { background: var(--brown); border-color: var(--brown); color: #fff; }
+  .btn.dark:hover { background: var(--brown-2); }
+  .btn.danger { color: var(--danger); border-color: #EBC3BD; background: #FFF6F4; }
+  .btn:disabled { opacity: .5; cursor: default; }
+  input[type=text], input[type=password], input[type=search], select {
+    width: 100%; padding: 11px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--soft); font-size: 16px;
+  }
+  input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 0; }
+  label.field { display: block; font-size: 13px; font-weight: 700; color: var(--ink-2); margin: 14px 0 6px; }
+
+  /* 로그인 */
+  #login { max-width: 380px; margin: 12vh auto 0; }
+  #login h1 { margin: 0 0 4px; font-size: 22px; }
+  #login p { margin: 0 0 14px; color: var(--ink-2); font-size: 14px; }
+  .remember { display: flex; align-items: center; gap: 8px; margin: 12px 0 16px; font-size: 14px; color: var(--ink-2); }
+  .error { color: var(--danger); font-size: 13px; font-weight: 700; margin-top: 10px; min-height: 18px; }
+
+  /* 상단 */
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .top h1 { margin: 0; font-size: 20px; }
+  .top h1 small { display: block; font-size: 12px; font-weight: 500; color: var(--ink-3); }
+  .top .actions { display: flex; gap: 6px; }
+  .month { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 16px 0 6px; }
+  .month b { font-size: 20px; min-width: 130px; text-align: center; }
+  .month .btn { width: 40px; height: 40px; padding: 0; font-size: 18px; }
+  .meta { text-align: center; color: var(--ink-3); font-size: 12px; margin-bottom: 14px; }
+
+  .tabs { display: flex; gap: 6px; background: #E9E2D6; padding: 4px; border-radius: 14px; margin-bottom: 14px; }
+  .tabs button { flex: 1; border: 0; background: transparent; padding: 10px; border-radius: 10px; font-weight: 700; color: var(--ink-2); cursor: pointer; }
+  .tabs button[aria-selected="true"] { background: var(--card); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+
+  /* 목장별 */
+  .groups { display: grid; gap: 12px; }
+  .g-head { display: flex; justify-content: space-between; align-items: baseline; }
+  .g-name { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 17px; }
+  .dot { width: 11px; height: 11px; border-radius: 3px; background: var(--c); flex: 0 0 auto; }
+  .g-sub { font-size: 13px; color: var(--ink-3); font-weight: 500; }
+  .g-rate { font-size: 28px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .bar { height: 10px; border-radius: 5px; background: #EEE8DE; overflow: hidden; margin: 8px 0 12px; }
+  .bar i { display: block; height: 100%; background: var(--c); border-radius: 5px; }
+  .items { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .items div { background: var(--soft); border-radius: 10px; padding: 6px 4px; text-align: center; font-size: 12px; color: var(--ink-2); }
+  .items b { display: block; font-size: 15px; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+  /* 개인별 */
+  .filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  .chip { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 7px 12px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  .chip[aria-pressed="true"] { background: var(--brown); border-color: var(--brown); color: #fff; }
+  .search { margin-bottom: 12px; }
+  .list { display: grid; gap: 8px; }
+  .member { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; padding: 14px 16px; }
+  .m-name { font-weight: 800; font-size: 16px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .tag { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--soft); color: var(--ink-2); border: 1px solid var(--line); }
+  .tag.warn { background: #FFF1E0; color: #A3521B; border-color: #F2C9A0; }
+  .m-rate { text-align: right; font-weight: 800; font-size: 20px; font-variant-numeric: tabular-nums; }
+  .m-detail { grid-column: 1 / -1; font-size: 12.5px; color: var(--ink-2); line-height: 1.6; }
+  .m-detail .bar { margin: 6px 0 6px; height: 6px; }
+  .m-foot { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .m-foot span { font-size: 12px; color: var(--ink-3); }
+  .empty { text-align: center; color: var(--ink-3); padding: 32px 0; font-size: 14px; }
+
+  /* 수정 창 */
+  dialog { border: 0; border-radius: 20px; padding: 0; width: min(92vw, 440px); background: var(--card); color: var(--ink); }
+  dialog::backdrop { background: rgba(0,0,0,.45); }
+  .dlg { padding: 20px; }
+  .dlg h2 { margin: 0; font-size: 18px; }
+  .dlg .sub { color: var(--ink-3); font-size: 13px; margin-top: 2px; }
+  .help { background: var(--soft); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; font-size: 12.5px; line-height: 1.6; color: var(--ink-2); margin-top: 14px; }
+  .dlg-actions { display: flex; justify-content: space-between; gap: 8px; margin-top: 18px; }
+  .danger-zone { border-top: 1px dashed var(--line); margin-top: 18px; padding-top: 14px; }
+  .danger-zone p { font-size: 12.5px; color: var(--ink-2); margin: 0 0 10px; line-height: 1.6; }
+
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: rgba(56,47,45,.94); color: #fff; padding: 10px 16px; border-radius: 999px; font-size: 13px; font-weight: 700; opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 10; }
+  .toast.show { opacity: 1; }
+  .loading { opacity: .5; pointer-events: none; }
+</style>
+</head>
+<body>
+<main>
+  <!-- 로그인 -->
+  <section id="login" class="card">
+    <h1>🔒 관리자</h1>
+    <p>세움 신앙점검표 관리자 비밀번호를 입력해 주세요.</p>
+    <form id="login-form">
+      <input id="password" type="password" autocomplete="current-password" placeholder="비밀번호" required>
+      <label class="remember"><input id="remember" type="checkbox"> 이 기기에서 기억하기</label>
+      <button class="btn dark" style="width:100%" type="submit">들어가기</button>
+      <div class="error" id="login-error"></div>
+    </form>
+  </section>
+
+  <!-- 관리 화면 -->
+  <section id="app" hidden>
+    <div class="top">
+      <h1>관리자 <small>세움 신앙점검표</small></h1>
+      <div class="actions">
+        <button class="btn" id="refresh" type="button">새로고침</button>
+        <button class="btn" id="logout" type="button">나가기</button>
+      </div>
+    </div>
+
+    <div class="month">
+      <button class="btn" id="prev" type="button" aria-label="이전 달">‹</button>
+      <b id="month-label">2026년 10월</b>
+      <button class="btn" id="next" type="button" aria-label="다음 달">›</button>
+    </div>
+    <div class="meta" id="meta"></div>
+
+    <div class="tabs" role="tablist">
+      <button role="tab" id="tab-groups" aria-selected="true">목장별 현황</button>
+      <button role="tab" id="tab-members" aria-selected="false">개인별 현황</button>
+    </div>
+
+    <div id="view-groups" class="groups"></div>
+
+    <div id="view-members" hidden>
+      <div class="filters" id="filters"></div>
+      <input class="search" id="search" type="search" placeholder="이름 검색">
+      <div class="list" id="list"></div>
+    </div>
+  </section>
+</main>
+
+<!-- 사람 수정 -->
+<dialog id="edit">
+  <form class="dlg" id="edit-form" method="dialog">
+    <h2 id="edit-title">이름</h2>
+    <div class="sub" id="edit-sub"></div>
+
+    <label class="field" for="edit-name">이름</label>
+    <input id="edit-name" type="text" maxlength="20" required>
+    <label class="field" for="edit-group">목장</label>
+    <select id="edit-group"></select>
+
+    <div class="help">
+      다른 목장으로 잘못 등록했다면 <b>목장만 바꿔 저장</b>하세요. 그분 휴대폰도 다음에 체크할 때 자동으로 새 목장으로 바뀝니다.<br>
+      옮길 목장에 같은 이름이 이미 있으면 두 기록이 <b>하나로 합쳐집니다</b>.
+    </div>
+
+    <div class="dlg-actions">
+      <button class="btn" type="button" id="edit-cancel">닫기</button>
+      <button class="btn dark" type="button" id="edit-save">저장</button>
+    </div>
+
+    <div class="danger-zone">
+      <p>시험으로 넣은 기록이나 더 이상 참여하지 않는 분만 삭제하세요. <b>삭제하면 되돌릴 수 없고</b>, 그 휴대폰에서 다시 체크하면 다시 생깁니다.</p>
+      <button class="btn danger" type="button" id="edit-delete">이 사람의 기록 모두 삭제</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="config.js"></script>
+<script>
+  const CFG = window.APP_CONFIG || {};
+  const API_URL = CFG.API_URL || '';
+  const COLORS = ['var(--g1)', 'var(--g2)', 'var(--g3)'];
+  const ITEM_LABELS = ['말씀', '기도', '통독', '예배'];
+  const $ = id => document.getElementById(id);
+  const pct = r => Math.round((r || 0) * 100) + '%';
+  // 이름은 성도들이 직접 입력한 값이라 화면에 넣기 전에 꼭 바꿔 준다
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  const store = {
+    get(k) { try { return sessionStorage.getItem(k) || localStorage.getItem(k); } catch { return null; } },
+    set(k, v, remember) { try { (remember ? localStorage : sessionStorage).setItem(k, v); } catch {} },
+    clear(k) { try { sessionStorage.removeItem(k); localStorage.removeItem(k); } catch {} },
+  };
+
+  let key = store.get('seum_admin_key') || '';
+  const now = new Date();
+  let viewY = now.getFullYear(), viewM = now.getMonth() + 1;
+  let data = null;
+  let filterGroup = '';
+  let editing = null;
+
+  async function api(payload) {
+    if (!API_URL) throw new Error('config.js에 API_URL이 없습니다.');
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(Object.assign({ key }, payload)),
+    });
+    const out = await res.json();
+    if (!out.ok) throw new Error(out.error || '요청 실패');
+    return out;
+  }
+
+  let toastTimer;
+  function toast(t) {
+    $('toast').textContent = t;
+    $('toast').classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => $('toast').classList.remove('show'), 2400);
+  }
+
+  // ---------- 로그인 ----------
+  $('login-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    key = $('password').value;
+    $('login-error').textContent = '';
+    e.target.classList.add('loading');
+    try {
+      await api({ admin: 'login' });
+      store.set('seum_admin_key', key, $('remember').checked);
+      showApp();
+    } catch (err) {
+      $('login-error').textContent = err.message;
+    } finally {
+      e.target.classList.remove('loading');
+    }
+  });
+
+  $('logout').addEventListener('click', () => {
+    store.clear('seum_admin_key');
+    key = '';
+    $('app').hidden = true;
+    $('login').hidden = false;
+    $('password').value = '';
+  });
+
+  function showApp() {
+    $('login').hidden = true;
+    $('app').hidden = false;
+    load();
+  }
+
+  // ---------- 불러오기 ----------
+  async function load() {
+    $('month-label').textContent = `${viewY}년 ${viewM}월`;
+    $('app').classList.add('loading');
+    try {
+      data = await api({ admin: 'overview', month: `${viewY}-${String(viewM).padStart(2, '0')}` });
+      const isNow = viewY === now.getFullYear() && viewM === now.getMonth() + 1;
+      $('meta').textContent = `${isNow ? `오늘까지 ${data.days}일` : `${data.days}일 전체`} 기준 · ` +
+        new Date(data.updatedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) + ' 업데이트';
+      renderGroups();
+      renderFilters();
+      renderMembers();
+    } catch (err) {
+      if (/비밀번호/.test(err.message)) { $('logout').click(); $('login-error').textContent = err.message; return; }
+      toast('불러오기 실패: ' + err.message);
+    } finally {
+      $('app').classList.remove('loading');
+    }
+  }
+
+  function colorOf(group) {
+    const i = (data ? data.groupNames : []).indexOf(group);
+    return COLORS[(i < 0 ? 0 : i) % COLORS.length];
+  }
+
+  function renderGroups() {
+    $('view-groups').innerHTML = data.groups.map(g => `
+      <article class="card" style="--c:${colorOf(g.group)}">
+        <div class="g-head">
+          <div class="g-name"><span class="dot"></span>${esc(g.group)} <span class="g-sub">${g.members}명</span></div>
+          <div class="g-rate">${pct(g.rate)}</div>
+        </div>
+        <div class="bar"><i style="width:${Math.min(100, g.rate * 100)}%"></i></div>
+        <div class="items">${g.items.map(it => `<div>${esc(it.label)}<b>${pct(it.rate)}</b></div>`).join('')}</div>
+      </article>`).join('');
+  }
+
+  function renderFilters() {
+    const counts = {};
+    data.members.forEach(m => counts[m.group] = (counts[m.group] || 0) + 1);
+    const chips = [['', `전체 ${data.members.length}`]].concat(data.groupNames.map(g => [g, `${g} ${counts[g] || 0}`]));
+    $('filters').innerHTML = chips.map(([g, label]) =>
+      `<button class="chip" type="button" data-g="${esc(g)}" aria-pressed="${g === filterGroup}">${g ? `<span class="dot" style="--c:${colorOf(g)}"></span>` : ''}${esc(label)}</button>`).join('');
+    $('filters').querySelectorAll('.chip').forEach(b => b.addEventListener('click', () => {
+      filterGroup = b.dataset.g;
+      renderFilters();
+      renderMembers();
+    }));
+  }
+
+  function renderMembers() {
+    const q = $('search').value.trim();
+    // 같은 이름이 여러 목장에 있으면 표시 (잘못 등록했을 가능성)
+    const groupsByName = {};
+    data.members.forEach(m => (groupsByName[m.name] = groupsByName[m.name] || new Set()).add(m.group));
+    const order = data.groupNames;
+    const list = data.members
+      .filter(m => (!filterGroup || m.group === filterGroup) && (!q || m.name.includes(q)))
+      .sort((a, b) => order.indexOf(a.group) - order.indexOf(b.group) || a.name.localeCompare(b.name, 'ko'));
+
+    if (!list.length) {
+      $('list').innerHTML = `<div class="empty">${data.members.length ? '찾는 사람이 없습니다.' : '아직 이 달까지 기록한 사람이 없습니다.'}</div>`;
+      return;
+    }
+    const md = d => d ? `${+d.slice(5, 7)}/${+d.slice(8, 10)}` : '-';
+    $('list').innerHTML = list.map((m, i) => {
+      const dup = groupsByName[m.name].size > 1;
+      return `
+      <article class="card member" style="--c:${colorOf(m.group)}">
+        <div class="m-name">${esc(m.name)}
+          <span class="tag"><span class="dot" style="display:inline-block;width:8px;height:8px;margin-right:4px"></span>${esc(m.group)}</span>
+          ${dup ? '<span class="tag warn">다른 목장에도 같은 이름</span>' : ''}
+        </div>
+        <div class="m-rate">${pct(m.rate)}</div>
+        <div class="m-detail">
+          <div class="bar"><i style="width:${Math.min(100, m.rate * 100)}%"></i></div>
+          ${ITEM_LABELS.map((l, k) => `${l} ${m.items[k]}`).join(' · ')} &nbsp;|&nbsp; 체크한 날 ${m.days}/${data.days}일
+        </div>
+        <div class="m-foot">
+          <span>마지막 체크 ${md(m.last)} · 처음 ${md(m.first)}</span>
+          <button class="btn" type="button" data-i="${i}">수정</button>
+        </div>
+      </article>`;
+    }).join('');
+    $('list').querySelectorAll('button[data-i]').forEach(b => b.addEventListener('click', () => openEdit(list[+b.dataset.i])));
+  }
+
+  // ---------- 수정 ----------
+  function openEdit(m) {
+    editing = m;
+    $('edit-title').textContent = m.name;
+    $('edit-sub').textContent = `${m.group} · 이번 달 체크 ${m.checks}개`;
+    $('edit-name').value = m.name;
+    $('edit-group').innerHTML = data.groupNames.map(g => `<option ${g === m.group ? 'selected' : ''}>${esc(g)}</option>`).join('');
+    $('edit').showModal();
+  }
+
+  $('edit-cancel').addEventListener('click', () => $('edit').close());
+
+  $('edit-save').addEventListener('click', async () => {
+    const newName = $('edit-name').value.trim();
+    const newGroup = $('edit-group').value;
+    if (!newName) return toast('이름을 입력해 주세요.');
+    if (newName === editing.name && newGroup === editing.group) return $('edit').close();
+    const what = newGroup !== editing.group ? `${editing.group} → ${newGroup}` : '';
+    const rename = newName !== editing.name ? `${editing.name} → ${newName}` : '';
+    if (!confirm(`다음과 같이 바꿀까요?\n\n${[what, rename].filter(Boolean).join('\n')}`)) return;
+    $('edit-form').classList.add('loading');
+    try {
+      const out = await api({ admin: 'move', group: editing.group, name: editing.name, newGroup, newName });
+      $('edit').close();
+      toast(`바꿨습니다 (옮긴 기록 ${out.moved}건${out.merged ? `, 합친 기록 ${out.merged}건` : ''})`);
+      load();
+    } catch (err) {
+      toast('실패: ' + err.message);
+    } finally {
+      $('edit-form').classList.remove('loading');
+    }
+  });
+
+  $('edit-delete').addEventListener('click', async () => {
+    const typed = prompt(`'${editing.name}'(${editing.group})의 기록을 모두 삭제합니다.\n되돌릴 수 없습니다. 계속하려면 이름을 그대로 입력하세요.`);
+    if (typed === null) return;
+    if (typed.trim() !== editing.name) return toast('이름이 달라 삭제하지 않았습니다.');
+    $('edit-form').classList.add('loading');
+    try {
+      const out = await api({ admin: 'delete', group: editing.group, name: editing.name });
+      $('edit').close();
+      toast(`삭제했습니다 (${out.deleted}건)`);
+      load();
+    } catch (err) {
+      toast('실패: ' + err.message);
+    } finally {
+      $('edit-form').classList.remove('loading');
+    }
+  });
+
+  // ---------- 탭 · 달 이동 ----------
+  function selectTab(which) {
+    $('tab-groups').setAttribute('aria-selected', which === 'groups');
+    $('tab-members').setAttribute('aria-selected', which === 'members');
+    $('view-groups').hidden = which !== 'groups';
+    $('view-members').hidden = which !== 'members';
+  }
+  $('tab-groups').addEventListener('click', () => selectTab('groups'));
+  $('tab-members').addEventListener('click', () => selectTab('members'));
+  $('search').addEventListener('input', () => data && renderMembers());
+  $('refresh').addEventListener('click', load);
+  $('prev').addEventListener('click', () => { viewM--; if (viewM < 1) { viewM = 12; viewY--; } load(); });
+  $('next').addEventListener('click', () => { viewM++; if (viewM > 12) { viewM = 1; viewY++; } load(); });
+
+  if (key) showApp();
+</script>
+</body>
+</html>
