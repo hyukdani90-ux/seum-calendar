@@ -262,13 +262,12 @@
         <button id="this-month-btn" onclick="goToMonth(TODAY.y, TODAY.m)" class="hidden px-2 py-1 text-[11px] font-bold text-stone-500 hover:text-stone-800 border border-stone-200 rounded-lg">이번 달</button>
       </div>
 
-      <div class="flex items-center gap-1.5 ml-auto">
-        <button id="profile-btn" onclick="openProfile()" class="px-2.5 py-1 text-xs font-semibold bg-white hover:bg-stone-50 text-stone-600 border border-stone-200 rounded-lg transition flex items-center gap-1 shadow-xs">
-          👥 <span id="profile-label">목장 선택</span>
+      <div class="flex items-center gap-1.5 ml-auto min-w-0">
+        <button id="profile-btn" onclick="openProfile()" class="min-w-0 px-2 py-1 text-xs font-semibold bg-white hover:bg-stone-50 text-stone-600 border border-stone-200 rounded-lg transition flex items-center gap-1 shadow-xs whitespace-nowrap">
+          👥 <span id="profile-label" class="truncate">목장 선택</span>
         </button>
-        <a href="race.html" class="px-2.5 py-1 text-xs font-bold bg-[#544641] hover:bg-[#3D332F] text-white rounded-lg transition flex items-center gap-1.5 shadow-xs">
-          <span id="mini-runner" class="mini-runner" aria-hidden="true"></span>
-          믿음의 경주
+        <a href="race.html" class="shrink-0 px-2 py-1 text-xs font-bold bg-[#544641] hover:bg-[#3D332F] text-white rounded-lg transition flex items-center gap-1 shadow-xs whitespace-nowrap tracking-tight">
+          <span id="mini-runner" class="mini-runner shrink-0" aria-hidden="true"></span>믿음의 경주 현황
         </a>
       </div>
     </div>
