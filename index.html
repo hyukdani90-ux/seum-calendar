@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>말씀 및 묵상 달력 - 천안세움교회</title>
+  <meta name="description" content="천안세움교회 말씀묵상·기도·성경통독·예배 4대 신앙생활 실천 체크표">
+  <meta name="theme-color" content="#F3EFE7">
+  <meta name="format-detection" content="telephone=no">
+
+  <!-- 홈 화면에 추가 (아이폰 / 안드로이드) -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="icon" href="icons/icon-192.png" type="image/png" sizes="192x192">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="세움 신앙점검표">
+
+  <!-- 카카오톡·문자 공유 미리보기 -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="말씀 및 묵상 달력 - 천안세움교회">
+  <meta property="og:description" content="천안세움교회 4대 신앙생활 실천표 — 휴대폰에서 바로 체크하세요">
+  <meta property="og:image" content="https://hyukdani90-ux.github.io/seum-calendar/icons/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: #F3EFE7;
+      color: #382F2D;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-text-size-adjust: 100%;
+      text-size-adjust: 100%;
+    }
+
+    /* 아이폰 노치·홈 인디케이터 영역 여백 확보 */
+    @media screen {
+      body { --pad: 0.5rem; }
+      @media (min-width: 640px) { body { --pad: 1rem; } }
+      @media (min-width: 768px) { body { --pad: 1.5rem; } }
+      body {
+        padding-left: max(var(--pad), env(safe-area-inset-left));
+        padding-right: max(var(--pad), env(safe-area-inset-right));
+        padding-bottom: max(var(--pad), env(safe-area-inset-bottom));
+        padding-top: max(var(--pad), env(safe-area-inset-top));
+      }
+    }
+
+    /* 버튼 더블탭 확대 지연 제거 */
+    button { touch-action: manipulation; }
+
+    /* A3 가로(Landscape) 1장 완벽 맞춤 인쇄 스타일 */
+    @page {
+      size: A3 landscape;
+      margin: 6mm 8mm;
+    }
+
+    @media print {
+      html, body {
+        width: 420mm !important;
+        height: 297mm !important;
+        max-height: 297mm !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background-color: #ffffff !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        overflow: hidden !important;
+      }
+
+      .no-print {
+        display: none !important;
+      }
+
+      #calendar-container {
+        width: 100% !important;
+        max-width: 100% !important;
+        height: 284mm !important;
+        max-height: 284mm !important;
+        margin: 0 auto !important;
+        padding: 2mm 3mm !important;
+        border: none !important;
+        box-shadow: none !important;
+        background: #ffffff !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: flex-start !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+
+      #graphic-header {
+        height: 60mm !important;
+        max-height: 60mm !important;
+        margin-bottom: 2mm !important;
+        flex-shrink: 0 !important;
+      }
+
+      #graphic-header svg {
+        height: 100% !important;
+        width: auto !important;
+        margin: 0 auto !important;
+      }
+
+      #calendar-section {
+        flex: 1 1 auto !important;
+        display: flex !important;
+        flex-direction: column !important;
+        height: calc(284mm - 66mm) !important;
+      }
+
+      #calendar-scroll-wrapper {
+        overflow: visible !important;
+      }
+
+      #week-header {
+        margin-bottom: 1.5mm !important;
+        padding-bottom: 1mm !important;
+        display: grid !important;
+      }
+
+      #calendar-grid {
+        display: grid !important;
+        flex: 1 1 auto !important;
+        height: 100% !important;
+        grid-template-columns: repeat(7, 1fr) !important;
+        /* 달마다 5주 또는 6주 */
+        grid-template-rows: repeat(var(--weeks, 5), 1fr) !important;
+        gap: 2mm !important;
+        min-width: 0 !important;
+      }
+
+      #calendar-list-view {
+        display: none !important;
+      }
+
+      .day-card {
+        padding: 1.5mm 2.5mm !important;
+        border-color: #BDB3A7 !important;
+        background: #FFFFFF !important;
+        opacity: 1 !important;
+      }
+
+      .check-item {
+        padding: 0.5mm 1mm !important;
+        font-size: 8pt !important;
+        line-height: 1.15 !important;
+        opacity: 1 !important;
+      }
+
+      .check-item .box-icon {
+        width: 11px !important;
+        height: 11px !important;
+      }
+    }
+
+    /* 체크박스 커스텀 트랜지션 */
+    .check-btn {
+      transition: all 0.15s ease-in-out;
+      user-select: none;
+    }
+    .check-btn:active {
+      transform: scale(0.97);
+    }
+
+    /* 모바일 가로 스크롤바 미려하게 표시 */
+    .custom-scrollbar::-webkit-scrollbar {
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #EFE7DB;
+      border-radius: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #C4B5A0;
+      border-radius: 4px;
+    }
+
+    /* 연·월 선택 */
+    .month-select {
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%236D4227'%3E%3Cpath d='M5.3 7.3a1 1 0 011.4 0L10 10.6l3.3-3.3a1 1 0 111.4 1.4l-4 4a1 1 0 01-1.4 0l-4-4a1 1 0 010-1.4z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.4rem center;
+      background-size: 0.9rem;
+      padding-right: 1.5rem;
+    }
+
+    /* 믿음의 경주 버튼의 달리는 실루엣 (9프레임, 내 목장 색) */
+    .mini-runner {
+      width: 16px; height: 21px;
+      background: var(--runner, #F3EFE7);
+      -webkit-mask: url(assets/runner.svg) 0 0 / 144px 21px no-repeat;
+              mask: url(assets/runner.svg) 0 0 / 144px 21px no-repeat;
+      animation: mini-run .72s steps(9) infinite;
+    }
+    @keyframes mini-run { to { -webkit-mask-position: -144px 0; mask-position: -144px 0; } }
+    @media (prefers-reduced-motion: reduce) { .mini-runner { animation: none; } }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col items-center">
+
+  <!-- 상단 컨트롤 바 (화면 전용, 인쇄 시 자동 숨김) -->
+  <header class="no-print w-full max-w-[1280px] mb-3 bg-white/95 backdrop-blur px-3 sm:px-4 py-3 rounded-2xl shadow-sm border border-stone-300 flex flex-col gap-2.5">
+    <div class="flex items-center justify-between flex-wrap gap-2">
+      <!-- 타이틀 정보 -->
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#F6EFE3] text-[#5A4A42] border border-[#E2D5C3] flex items-center justify-center shrink-0 shadow-inner">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+          </svg>
+        </div>
+        <div>
+          <h1 id="page-title" class="font-bold text-sm sm:text-base text-[#382F2D] leading-tight">말씀 및 묵상 달력</h1>
+          <p class="text-[11px] sm:text-xs text-stone-500 font-medium">천안세움교회 4대 신앙생활 실천표</p>
+        </div>
+      </div>
+
+      <!-- 모바일/PC 뷰 전환 탭 & 인쇄 버튼 -->
+      <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap ml-auto">
+        <!-- 보기 모드 전환 토글 (스마트폰 최적화) -->
+        <div class="flex bg-stone-100 p-1 rounded-xl border border-stone-200 text-xs font-bold">
+          <button id="view-btn-list" onclick="switchView('list')" class="px-2.5 py-1 rounded-lg transition bg-white text-stone-800 shadow-xs flex items-center gap-1">
+            <span>📱 모바일 큰글씨</span>
+          </button>
+          <button id="view-btn-grid" onclick="switchView('grid')" class="px-2.5 py-1 rounded-lg transition text-stone-500 hover:text-stone-800 flex items-center gap-1">
+            <span>📅 월간 달력</span>
+          </button>
+        </div>
+
+        <!-- A3 인쇄 / PDF 저장 버튼 -->
+        <button onclick="window.print()" class="px-3 py-1.5 text-xs font-bold bg-[#544641] hover:bg-[#3D332F] text-white rounded-xl transition flex items-center gap-1.5 shadow-sm active:scale-95">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <polyline points="6 9 6 2 18 2 18 9"></polyline>
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+            <rect x="6" y="14" width="12" height="8"></rect>
+          </svg>
+          <span class="hidden sm:inline">A3 인쇄 / PDF</span>
+          <span class="sm:hidden">인쇄</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- 연·월 선택 & 목장 -->
+    <div class="flex items-center justify-between flex-wrap gap-2 pt-2 border-t border-stone-100">
+      <div class="flex items-center gap-1.5">
+        <button id="prev-month" onclick="moveMonth(-1)" aria-label="이전 달" class="w-8 h-8 rounded-lg bg-stone-100 hover:bg-[#EFE7D8] border border-stone-200 text-stone-700 font-bold flex items-center justify-center disabled:opacity-30 disabled:cursor-default">‹</button>
+        <select id="year-select" aria-label="연도" onchange="goToMonth(+this.value, viewMonth)" class="month-select bg-[#FAF6EE] border border-[#E2D5C3] text-[#6D4227] rounded-lg pl-2.5 py-1 text-sm font-extrabold"></select>
+        <select id="month-select" aria-label="월" onchange="goToMonth(viewYear, +this.value)" class="month-select bg-[#FAF6EE] border border-[#E2D5C3] text-[#6D4227] rounded-lg pl-2.5 py-1 text-sm font-extrabold"></select>
+        <button id="next-month" onclick="moveMonth(1)" aria-label="다음 달" class="w-8 h-8 rounded-lg bg-stone-100 hover:bg-[#EFE7D8] border border-stone-200 text-stone-700 font-bold flex items-center justify-center disabled:opacity-30 disabled:cursor-default">›</button>
+        <button id="this-month-btn" onclick="goToMonth(TODAY.y, TODAY.m)" class="hidden px-2 py-1 text-[11px] font-bold text-stone-500 hover:text-stone-800 border border-stone-200 rounded-lg">이번 달</button>
+      </div>
+
+      <div class="flex items-center gap-1.5 ml-auto">
+        <button id="profile-btn" onclick="openProfile()" class="px-2.5 py-1 text-xs font-semibold bg-white hover:bg-stone-50 text-stone-600 border border-stone-200 rounded-lg transition flex items-center gap-1 shadow-xs">
+          👥 <span id="profile-label">목장 선택</span>
+        </button>
+        <a href="race.html" class="px-2.5 py-1 text-xs font-bold bg-[#544641] hover:bg-[#3D332F] text-white rounded-lg transition flex items-center gap-1.5 shadow-xs">
+          <span id="mini-runner" class="mini-runner" aria-hidden="true"></span>
+          믿음의 경주
+        </a>
+      </div>
+    </div>
+
+    <!-- 진행 상황 및 상세 현황 바 -->
+    <div class="flex items-center justify-between flex-wrap gap-2 pt-2 border-t border-stone-100">
+      <div class="flex items-center gap-2 flex-1 min-w-[240px]">
+        <span class="text-xs font-bold text-stone-700 whitespace-nowrap">전체 실천율</span>
+        <div class="w-full max-w-[200px] sm:max-w-xs bg-stone-200 rounded-full h-2.5 overflow-hidden">
+          <div id="progress-bar-fill" class="bg-[#B47C56] h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+        </div>
+        <span id="progress-text" class="text-xs font-extrabold text-[#6D4227] whitespace-nowrap">0% (0/124)</span>
+      </div>
+
+      <div class="flex items-center gap-2 ml-auto">
+        <button onclick="toggleModal('progress-modal', true)" class="px-2.5 py-1 text-xs font-semibold bg-[#FAF6EE] hover:bg-[#F3EBDD] text-[#6D4227] border border-[#E2D5C3] rounded-lg transition flex items-center gap-1 shadow-xs">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <line x1="18" y1="20" x2="18" y2="10"></line>
+            <line x1="12" y1="20" x2="12" y2="4"></line>
+            <line x1="6" y1="20" x2="6" y2="14"></line>
+          </svg>
+          항목별 통계
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 메인 달력 컨테이너 -->
+  <main id="calendar-container" class="w-full max-w-[1280px] bg-white rounded-2xl shadow-xl border border-stone-300/80 p-2.5 sm:p-4 md:p-5 flex flex-col">
+
+    <!-- 원본 이미지(1.jpg) 1:1 고해상도 벡터 SVG 헤더 배너 -->
+    <div id="graphic-header" class="w-full relative select-none overflow-hidden rounded-xl border border-[#4A3E3D] shadow-sm bg-[#FAF6EE] mb-2 sm:mb-3">
+      <svg viewBox="0 0 1600 480" class="w-full h-auto block" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+        <!-- 1. 원본 후면 종이 겹침(Shadow Sheet) 효과 -->
+        <rect x="14" y="10" width="1576" height="462" rx="4" fill="#F8E7C4" stroke="#4A3E3D" stroke-width="2.5" />
+
+        <!-- 2. 전면 메인 크림색 시트 -->
+        <rect x="0" y="0" width="1582" height="460" rx="2" fill="#FAF6EE" stroke="#4A3E3D" stroke-width="2.5" />
+
+        <!-- 3. 좌측 바인더 여백선 & 바인더 펀치 구멍 2개 -->
+        <line x1="65" y1="0" x2="65" y2="460" stroke="#4A3E3D" stroke-width="2" />
+        <circle cx="32" cy="40" r="9.5" fill="#FAF6EE" stroke="#4A3E3D" stroke-width="2.2" />
+        <circle cx="32" cy="420" r="9.5" fill="#FAF6EE" stroke="#4A3E3D" stroke-width="2.2" />
+
+        <!-- 4. 좌측 텍스트: "N월 말씀및 묵상" & 대형 타이틀 (그 달의 성경) -->
+        <g transform="translate(145, 0)">
+          <text id="svg-month-text" x="0" y="142" font-family="'Noto Sans KR', sans-serif" font-size="54" font-weight="600" fill="#423735" letter-spacing="1">10월 말씀및 묵상</text>
+          <text id="svg-book-text" x="0" y="274" font-family="'Noto Sans KR', sans-serif" font-size="114" font-weight="800" fill="#423735" letter-spacing="-2">열왕기상</text>
+        </g>
+
+        <!-- 5. 책꽂이 바닥선 -->
+        <line x1="65" y1="365" x2="1582" y2="365" stroke="#4A3E3D" stroke-width="2.5" />
+
+        <!-- 6. 우측 책 일러스트레이션 (원본 1:1 매칭) -->
+        <g id="books-illustration" transform="translate(895, 120)">
+          <!-- (1) 좌측 기울어진 핑크색 책 -->
+          <g transform="translate(0, 48) rotate(13.5)">
+            <rect x="0" y="0" width="58" height="196" rx="3" fill="#FBCBD2" stroke="#4A3E3D" stroke-width="2.8" />
+            <line x1="12" y1="0" x2="12" y2="196" stroke="#4A3E3D" stroke-width="1.8" opacity="0.35" />
+          </g>
+
+          <!-- (2) 첫 번째 노란색 책 (타원 캡슐 장식) -->
+          <g transform="translate(108, 42)">
+            <rect x="0" y="0" width="68" height="204" rx="3" fill="#FFF4D0" stroke="#4A3E3D" stroke-width="2.8" />
+            <rect x="14" y="22" width="40" height="160" rx="20" fill="#FFBA59" stroke="#E29F3D" stroke-width="1.5" />
+          </g>
+
+          <!-- (3) 가장 키 큰 코랄/살구색 책 (상단 민트 띠) -->
+          <g transform="translate(176, -38)">
+            <rect x="0" y="0" width="69" height="284" rx="3" fill="#FDC6AE" stroke="#4A3E3D" stroke-width="2.8" />
+            <rect x="0" y="19" width="69" height="9" fill="#9CE4CE" stroke="#4A3E3D" stroke-width="2.5" />
+          </g>
+
+          <!-- (4) 두 번째 코랄/살구색 책 (상단 민트 띠) -->
+          <g transform="translate(245, -14)">
+            <rect x="0" y="0" width="67" height="260" rx="3" fill="#FDC6AE" stroke="#4A3E3D" stroke-width="2.8" />
+            <rect x="0" y="19" width="67" height="9" fill="#9CE4CE" stroke="#4A3E3D" stroke-width="2.5" />
+          </g>
+
+          <!-- (5) 얇은 보라/라벤더색 책 -->
+          <g transform="translate(312, 30)">
+            <rect x="0" y="0" width="29" height="216" rx="2" fill="#D2B7E5" stroke="#4A3E3D" stroke-width="2.8" />
+          </g>
+
+          <!-- (6) 청록/하늘색 책 -->
+          <g transform="translate(341, 75)">
+            <rect x="0" y="0" width="44" height="171" rx="3" fill="#A8E8FD" stroke="#4A3E3D" stroke-width="2.8" />
+          </g>
+
+          <!-- (7) 우측 두 번째 노란색 책 (타원 캡슐 장식) -->
+          <g transform="translate(385, 42)">
+            <rect x="0" y="0" width="68" height="204" rx="3" fill="#FFF4D0" stroke="#4A3E3D" stroke-width="2.8" />
+            <rect x="14" y="22" width="40" height="160" rx="20" fill="#FFBA59" stroke="#E29F3D" stroke-width="1.5" />
+          </g>
+
+          <!-- 우측 상단 반짝이는 4각 별 (Twinkle Star) -->
+          <g transform="translate(405, -92)">
+            <line x1="0" y1="-46" x2="0" y2="46" stroke="#4A3E3D" stroke-width="2.2" stroke-linecap="round" />
+            <line x1="-46" y1="0" x2="46" y2="0" stroke="#4A3E3D" stroke-width="2.2" stroke-linecap="round" />
+            <line x1="-16" y1="-16" x2="16" y2="16" stroke="#4A3E3D" stroke-width="1.6" stroke-linecap="round" />
+            <line x1="16" y1="-16" x2="-16" y2="16" stroke="#4A3E3D" stroke-width="1.6" stroke-linecap="round" />
+          </g>
+        </g>
+
+        <!-- 7. 하단 3단 정보 바 -->
+        <g id="bottom-info-bar">
+          <rect x="65" y="365" width="1517" height="95" fill="#F8F3E7" />
+          <line x1="490" y1="378" x2="490" y2="446" stroke="#4A3E3D" stroke-width="1.8" />
+          <line x1="950" y1="378" x2="950" y2="446" stroke="#4A3E3D" stroke-width="1.8" />
+          <text x="278" y="420" font-family="'Noto Sans KR', sans-serif" font-size="24" font-weight="700" fill="#423735" text-anchor="middle">천안세움교회</text>
+          <text x="720" y="420" font-family="'Noto Sans KR', sans-serif" font-size="23" font-weight="700" fill="#423735" text-anchor="middle">041-901-9291</text>
+          <text x="1180" y="420" font-family="'Noto Sans KR', sans-serif" font-size="24" font-weight="700" fill="#423735" text-anchor="middle">하나님과 동행하는 삶</text>
+        </g>
+      </svg>
+    </div>
+
+    <!-- 1. 스마트폰 최적화: 큰 글씨 일자별 목록 뷰 (모바일 기본 추천) -->
+    <div id="calendar-list-view" class="w-full flex flex-col gap-2.5">
+      <div class="bg-[#FAF6EE] p-2.5 rounded-xl border border-[#EADFCB] text-xs text-[#6A4E39] flex items-center justify-between">
+        <span class="font-semibold">📱 모바일 추천 모드: 글씨가 크고 터치하기 편합니다.</span>
+        <span id="list-range" class="text-[11px] font-bold text-stone-500">10월 1일 ~ 31일</span>
+      </div>
+
+      <!-- 주차별 빠른 이동 버튼 바 -->
+      <div id="week-jump-bar" class="flex items-center gap-1.5 overflow-x-auto py-1 custom-scrollbar text-xs font-bold text-stone-700">
+        <!-- 자바스크립트로 렌더링 -->
+      </div>
+
+      <!-- 모바일 일자별 카드 컨테이너 -->
+      <div id="mobile-cards-container" class="flex flex-col gap-2.5 mt-1">
+        <!-- 자바스크립트로 큰 글씨 모바일 카드 렌더링 -->
+      </div>
+    </div>
+
+    <!-- 2. 데스크톱 및 A3 인쇄용 그리드 뷰 (모바일에서는 가로 스크롤로 보호되어 글씨가 찌그러지지 않음) -->
+    <section id="calendar-section" class="w-full hidden">
+      <!-- 모바일 화면 알림 안내 -->
+      <div class="md:hidden text-xs text-stone-500 font-medium mb-1.5 flex items-center justify-between bg-stone-50 px-2 py-1 rounded-lg border border-stone-200">
+        <span>👉 화면을 좌우로 스크롤하면 모든 요일을 크게 보실 수 있습니다.</span>
+      </div>
+
+      <div id="calendar-scroll-wrapper" class="w-full overflow-x-auto custom-scrollbar pb-2">
+        <!-- 최소 너비를 760px로 확보하여 스마트폰 화면에서도 글씨와 체크박스가 찌그러지지 않음 -->
+        <div class="min-w-[760px] md:min-w-full flex flex-col">
+          <!-- 요일 헤더 -->
+          <div id="week-header" class="grid grid-cols-7 text-center font-bold text-xs sm:text-sm border-b-2 border-[#5A4B46] pb-1.5 mb-2 text-stone-700">
+            <div class="text-[#D32F2F]">일 (SUN)</div>
+            <div>월 (MON)</div>
+            <div>화 (TUE)</div>
+            <div>수 (WED)</div>
+            <div>목 (THU)</div>
+            <div>금 (FRI)</div>
+            <div class="text-[#1976D2]">토 (SAT)</div>
+          </div>
+
+          <!-- 일자별 4대 신앙실천 체크 그리드 -->
+          <div id="calendar-grid" class="grid grid-cols-7 gap-1.5 sm:gap-2">
+            <!-- 자바스크립트로 동적 렌더링 -->
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 상세 현황 모달 팝업 -->
+  <div id="progress-modal" onclick="if (event.target === this) toggleModal('progress-modal', false)" class="no-print fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-4 sm:p-6 shadow-2xl border border-stone-200">
+      <div class="flex items-center justify-between pb-3 border-b border-stone-200">
+        <div class="flex items-center gap-2">
+          <div class="p-2 bg-[#F6EFE3] rounded-lg text-[#6D4227]">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+              <path d="M12 20v-6M6 20V10M18 20V4"></path>
+            </svg>
+          </div>
+          <h3 id="modal-title" class="font-bold text-base sm:text-lg text-stone-800">4대 신앙생활 실천 상세 현황</h3>
+        </div>
+        <button onclick="toggleModal('progress-modal', false)" class="text-stone-400 hover:text-stone-600 p-1 rounded-lg">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+
+      <!-- 항목별 현황 바 -->
+      <div class="mt-4 space-y-3.5">
+        <div>
+          <div class="flex justify-between text-xs sm:text-sm font-semibold mb-1">
+            <span class="text-emerald-800 flex items-center gap-1.5 font-bold">📖 말씀묵상</span>
+            <span id="stat-word" class="text-stone-600 font-bold">0일 / 31일 (0%)</span>
+          </div>
+          <div class="w-full bg-stone-100 rounded-full h-2.5 overflow-hidden">
+            <div id="bar-word" class="bg-emerald-600 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <div>
+          <div class="flex justify-between text-xs sm:text-sm font-semibold mb-1">
+            <span class="text-amber-800 flex items-center gap-1.5 font-bold">🙏 기도생활</span>
+            <span id="stat-prayer" class="text-stone-600 font-bold">0일 / 31일 (0%)</span>
+          </div>
+          <div class="w-full bg-stone-100 rounded-full h-2.5 overflow-hidden">
+            <div id="bar-prayer" class="bg-amber-600 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <div>
+          <div class="flex justify-between text-xs sm:text-sm font-semibold mb-1">
+            <span class="text-blue-800 flex items-center gap-1.5 font-bold">📜 성경통독</span>
+            <span id="stat-read" class="text-stone-600 font-bold">0일 / 31일 (0%)</span>
+          </div>
+          <div class="w-full bg-stone-100 rounded-full h-2.5 overflow-hidden">
+            <div id="bar-read" class="bg-blue-600 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <div>
+          <div class="flex justify-between text-xs sm:text-sm font-semibold mb-1">
+            <span class="text-purple-800 flex items-center gap-1.5 font-bold">⛪ 예배 (주일/수요/새벽)</span>
+            <span id="stat-worship" class="text-stone-600 font-bold">0일 / 31일 (0%)</span>
+          </div>
+          <div class="w-full bg-stone-100 rounded-full h-2.5 overflow-hidden">
+            <div id="bar-worship" class="bg-purple-600 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 격려 말씀 카드 -->
+      <div class="mt-5 p-3 bg-[#FAF6EE] border border-[#E8DDCC] rounded-xl text-center">
+        <p class="text-xs sm:text-sm text-[#5D4638] font-semibold leading-relaxed">
+          "주의 말씀은 내 발에 등이요 내 길에 빛이니이다"<br>
+          <span class="text-[11px] text-stone-500 font-normal">(시편 119:105)</span>
+        </p>
+      </div>
+
+      <div class="mt-5 flex justify-between items-center">
+        <button id="reset-btn" onclick="resetAllChecks()" class="text-xs text-stone-400 hover:text-red-500 underline transition">이번 달 초기화</button>
+        <button onclick="toggleModal('progress-modal', false)" class="px-4 py-2 bg-[#544641] text-white text-xs font-bold rounded-xl hover:bg-[#3D332F] transition">
+          닫기
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 목장 선택 모달 -->
+  <div id="profile-modal" class="no-print fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 hidden">
+    <form id="profile-form" class="bg-white rounded-2xl max-w-sm w-full p-5 sm:p-6 shadow-2xl border border-stone-200">
+      <div class="flex items-center gap-2 pb-3 border-b border-stone-200">
+        <div class="p-2 bg-[#F6EFE3] rounded-lg text-[#6D4227] text-base leading-none">👥</div>
+        <h3 class="font-bold text-base sm:text-lg text-stone-800">어느 목장이세요?</h3>
+      </div>
+      <p class="mt-3 text-xs text-stone-500 font-medium">처음 한 번만 고르면 이 휴대폰에 기억됩니다. 체크하면 목장 실천율(믿음의 경주)에 자동으로 반영돼요.</p>
+
+      <div id="group-options" class="mt-3 grid gap-2"></div>
+
+      <input id="profile-name" maxlength="20" placeholder="이름" autocomplete="name"
+        class="mt-3 w-full px-3 py-2.5 rounded-xl border border-stone-300 bg-[#FAF8F5] text-sm font-bold text-stone-800 focus:outline-none focus:border-[#B47C56] focus:ring-1 focus:ring-[#B47C56]">
+
+      <p id="profile-error" class="mt-2 text-xs font-semibold text-[#D32F2F] hidden">목장과 이름을 모두 입력해 주세요.</p>
+
+      <div class="mt-5 flex justify-between items-center">
+        <button type="button" onclick="closeProfile(true)" class="text-xs text-stone-400 hover:text-stone-600 underline transition">나중에 하기</button>
+        <button type="submit" class="px-4 py-2 bg-[#544641] text-white text-xs font-bold rounded-xl hover:bg-[#3D332F] transition">저장</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- 전송 상태 알림 -->
+  <div id="sync-toast" class="no-print fixed left-1/2 -translate-x-1/2 bottom-5 z-50 px-3.5 py-2 rounded-full bg-[#382F2D]/90 text-white text-xs font-bold shadow-lg transition-opacity duration-300 opacity-0 pointer-events-none" role="status" aria-live="polite"></div>
+
+  <script src="config.js"></script>
+  <script src="holidays.js"></script>
+  <script>
+    const CFG = window.APP_CONFIG || {};
+    const API_URL = CFG.API_URL || '';
+    const GROUPS = CFG.GROUPS || ['나종혁 목장', '임백호 목장', '정찬민 목장'];
+    const BOOKS = CFG.BOOKS || {};
+    const HOLIDAYS = window.HOLIDAYS || {};
+
+    // 안전한 로컬 스토리지 래퍼 (iframe 샌드박스 보안 예외 방지)
+    const memoryStore = {};
+    function safeGetItem(key) {
+      try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          return localStorage.getItem(key);
+        }
+      } catch (e) {}
+      return memoryStore[key] || null;
+    }
+
+    function safeSetItem(key, val) {
+      try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          localStorage.setItem(key, val);
+          return;
+        }
+      } catch (e) {}
+      memoryStore[key] = val;
+    }
+
+    // 4가지 실천 항목 정의 (api: 시트에 저장되는 이름)
+    const HABITS = [
+      { key: 'word', api: 'word', name: '말씀묵상', short: '말씀', emoji: '📖' },
+      { key: 'prayer', api: 'prayer', name: '기도생활', short: '기도', emoji: '🙏' },
+      { key: 'read', api: 'reading', name: '성경통독', short: '통독', emoji: '📜' },
+      { key: 'worship', api: 'worship', name: '예배생활', short: '예배', emoji: '⛪' }
+    ];
+
+    const DAYS_OF_WEEK_KO = ['일', '월', '화', '수', '목', '금', '토'];
+
+    // ---------- 날짜 ----------
+    const pad2 = n => String(n).padStart(2, '0');
+    const now = new Date();
+    const TODAY = { y: now.getFullYear(), m: now.getMonth() + 1, d: now.getDate() };
+    const TODAY_STR = `${TODAY.y}-${pad2(TODAY.m)}-${pad2(TODAY.d)}`;
+    const FIRST_YEAR = Math.min(CFG.FIRST_YEAR || TODAY.y, TODAY.y);
+    const LAST_YEAR = Math.max(CFG.LAST_YEAR || TODAY.y, TODAY.y + 3);
+
+    let viewYear = Math.min(Math.max(TODAY.y, FIRST_YEAR), LAST_YEAR);
+    let viewMonth = TODAY.m;
+    let daysInMonth = 31;
+    let firstDayIndex = 0;
+
+    const monthKey = () => `${viewYear}-${pad2(viewMonth)}`;
+    const dateStr = day => `${monthKey()}-${pad2(day)}`;
+    const isFuture = day => dateStr(day) > TODAY_STR;
+    const isToday = day => dateStr(day) === TODAY_STR;
+
+    let currentView = 'list'; // 모바일 기본: 'list' (큰글씨), 데스크톱/인쇄: 'grid'
+    let checkData = {};
+
+    // ---------- 저장 (달마다 따로) ----------
+    const STORAGE_PREFIX = 'seum_checks_';
+
+    // 이전 버전(2026년 10월 전용)에 저장된 체크를 그대로 가져온다
+    function migrateLegacy() {
+      const legacy = safeGetItem('seum_calendar_checks_2026');
+      if (legacy && !safeGetItem(STORAGE_PREFIX + '2026-10')) {
+        safeSetItem(STORAGE_PREFIX + '2026-10', legacy);
+      }
+    }
+
+    function loadSavedData() {
+      const saved = safeGetItem(STORAGE_PREFIX + monthKey());
+      if (saved) {
+        try {
+          checkData = JSON.parse(saved);
+        } catch (e) {
+          checkData = {};
+        }
+      } else {
+        checkData = {};
+      }
+    }
+
+    function saveData() {
+      safeSetItem(STORAGE_PREFIX + monthKey(), JSON.stringify(checkData));
+    }
+
+    // ---------- 목장 / 이름 ----------
+    let profile = null;
+    try { profile = JSON.parse(safeGetItem('seum_profile') || 'null'); } catch (e) {}
+
+    function renderProfile() {
+      document.getElementById('profile-label').textContent = profile ? `${profile.group} · ${profile.name}` : '목장 선택';
+      const idx = profile ? Math.max(0, GROUPS.indexOf(profile.group)) : 0;
+      // 믿음의 경주 화면의 목장 레인 색과 같게
+      const color = ['#5A9BEA', '#F07D4E', '#2EC28C'][idx % 3];
+      document.getElementById('mini-runner').style.setProperty('--runner', profile ? color : '#F3EFE7');
+    }
+
+    function openProfile() {
+      const box = document.getElementById('group-options');
+      box.innerHTML = GROUPS.map(g => `
+        <label class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl border border-stone-200 bg-[#FAF8F5] cursor-pointer has-[:checked]:bg-[#EFE5D5] has-[:checked]:border-[#C4AC90] transition">
+          <input type="radio" name="group" value="${g}" ${profile && profile.group === g ? 'checked' : ''} class="w-4 h-4 accent-[#7A5438]">
+          <span class="text-sm font-bold text-stone-800">${g}</span>
+        </label>`).join('');
+      document.getElementById('profile-name').value = profile ? profile.name : '';
+      document.getElementById('profile-error').classList.add('hidden');
+      toggleModal('profile-modal', true);
+    }
+
+    function closeProfile(skipped) {
+      if (skipped) safeSetItem('seum_profile_later', '1');
+      toggleModal('profile-modal', false);
+    }
+
+    document.getElementById('profile-form').addEventListener('submit', e => {
+      e.preventDefault();
+      const picked = document.querySelector('#group-options input:checked');
+      const name = document.getElementById('profile-name').value.trim();
+      if (!picked || !name) {
+        document.getElementById('profile-error').classList.remove('hidden');
+        return;
+      }
+      const isNew = !profile || profile.group !== picked.value || profile.name !== name;
+      profile = { group: picked.value, name };
+      safeSetItem('seum_profile', JSON.stringify(profile));
+      renderProfile();
+      closeProfile(false);
+      // 목장을 정하기 전에 체크해 둔 이번 달 기록도 함께 보낸다
+      if (isNew) uploadMonth();
+    });
+
+    // ---------- 목장 시트로 전송 ----------
+    const pendingSend = {};
+
+    function recordFor(day) {
+      const s = checkData[day] || {};
+      const r = { date: dateStr(day) };
+      HABITS.forEach(h => { r[h.api] = !!s[h.key]; });
+      return r;
+    }
+
+    function queueSend(day) {
+      if (!API_URL || !profile) return;
+      const date = dateStr(day);
+      const rec = recordFor(day);
+      clearTimeout(pendingSend[date]);
+      // 연달아 누를 때는 마지막 상태만 보낸다
+      pendingSend[date] = setTimeout(() => {
+        postToSheet(rec).finally(() => { delete pendingSend[date]; });
+      }, 700);
+    }
+
+    async function postToSheet(payload) {
+      try {
+        // text/plain 으로 보내야 Apps Script가 CORS 사전 요청 없이 받는다
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(Object.assign({ group: profile.group, name: profile.name }, payload))
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error);
+        showToast('목장에 전달됨 ✓');
+      } catch (e) {
+        showToast('전송 실패 – 이 휴대폰에는 저장됨');
+      }
+    }
+
+    function uploadMonth() {
+      if (!API_URL || !profile) return;
+      const records = Object.keys(checkData)
+        .map(Number)
+        .filter(day => day >= 1 && day <= daysInMonth && !isFuture(day))
+        .map(recordFor);
+      if (records.length) postToSheet({ records });
+    }
+
+    async function syncMonth() {
+      if (!API_URL || !profile) return;
+      const key = monthKey();
+      const qs = new URLSearchParams({ action: 'mine', group: profile.group, name: profile.name, month: key });
+      try {
+        const res = await fetch(`${API_URL}?${qs}`);
+        const data = await res.json();
+        if (!data.ok || key !== monthKey()) return;
+        data.records.forEach(r => {
+          if (pendingSend[r.date]) return; // 보내는 중인 날은 화면 상태 유지
+          const day = +r.date.slice(8, 10);
+          checkData[day] = {};
+          HABITS.forEach(h => { checkData[day][h.key] = !!r[h.api]; });
+        });
+        saveData();
+        renderAllViews();
+        updateProgress();
+      } catch (e) {}
+    }
+
+    let toastTimer;
+    function showToast(text) {
+      const t = document.getElementById('sync-toast');
+      t.textContent = text;
+      t.classList.remove('opacity-0');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => t.classList.add('opacity-0'), 1800);
+    }
+
+    // 체크 항목 토글
+    function toggleHabit(day, habitKey, event) {
+      if (event) event.stopPropagation();
+      if (isFuture(day)) return;
+      if (!checkData[day]) checkData[day] = {};
+      checkData[day][habitKey] = !checkData[day][habitKey];
+      saveData();
+      renderAllViews();
+      updateProgress();
+      queueSend(day);
+    }
+
+    // 전체 실천 항목 한 번에 체크/해제
+    function toggleAllHabitsOfDay(day) {
+      if (isFuture(day)) return;
+      if (!checkData[day]) checkData[day] = {};
+      const allDone = HABITS.every(h => !!checkData[day][h.key]);
+      HABITS.forEach(h => {
+        checkData[day][h.key] = !allDone;
+      });
+      saveData();
+      renderAllViews();
+      updateProgress();
+      queueSend(day);
+    }
+
+    // ---------- 연·월 이동 ----------
+    function fillMonthPickers() {
+      const ys = document.getElementById('year-select');
+      const ms = document.getElementById('month-select');
+      for (let y = FIRST_YEAR; y <= LAST_YEAR; y++) ys.add(new Option(`${y}년`, y));
+      for (let m = 1; m <= 12; m++) ms.add(new Option(`${m}월`, m));
+    }
+
+    function goToMonth(y, m) {
+      if (m < 1) { y--; m = 12; }
+      if (m > 12) { y++; m = 1; }
+      if (y < FIRST_YEAR || y > LAST_YEAR) return;
+      viewYear = y;
+      viewMonth = m;
+      applyMonth();
+    }
+
+    function moveMonth(step) {
+      goToMonth(viewYear, viewMonth + step);
+    }
+
+    function applyMonth() {
+      daysInMonth = new Date(viewYear, viewMonth, 0).getDate();
+      firstDayIndex = new Date(viewYear, viewMonth - 1, 1).getDay();
+
+      document.getElementById('year-select').value = viewYear;
+      document.getElementById('month-select').value = viewMonth;
+      document.getElementById('prev-month').disabled = viewYear === FIRST_YEAR && viewMonth === 1;
+      document.getElementById('next-month').disabled = viewYear === LAST_YEAR && viewMonth === 12;
+      const isThisMonth = viewYear === TODAY.y && viewMonth === TODAY.m;
+      document.getElementById('this-month-btn').classList.toggle('hidden', isThisMonth);
+
+      // 제목·배너: 그 달의 성경
+      const book = BOOKS[monthKey()];
+      const title = `${viewMonth}월 말씀 및 묵상 달력${book ? ` (${book})` : ''}`;
+      document.getElementById('page-title').textContent = title;
+      document.title = `${title} - 천안세움교회`;
+      document.getElementById('svg-month-text').textContent = `${viewMonth}월 말씀및 묵상`;
+      const bookText = document.getElementById('svg-book-text');
+      bookText.textContent = book || '말씀 묵상';
+      // 이름이 긴 성경(예: 데살로니가전서)도 책 그림을 넘지 않게 글자 크기를 줄인다
+      const len = (book || '말씀 묵상').length;
+      bookText.setAttribute('font-size', Math.min(114, Math.floor(700 / len)));
+
+      document.getElementById('list-range').textContent = `${viewMonth}월 1일 ~ ${daysInMonth}일`;
+      document.getElementById('modal-title').textContent = `${viewMonth}월 4대 신앙생활 실천 상세 현황`;
+      document.getElementById('reset-btn').textContent = `${viewMonth}월 초기화`;
+
+      renderWeekJumps();
+      loadSavedData();
+      renderAllViews();
+      updateProgress();
+      syncMonth();
+    }
+
+    // 주차별 빠른 이동 버튼 (일요일 시작)
+    function renderWeekJumps() {
+      const bar = document.getElementById('week-jump-bar');
+      let html = '<span class="text-stone-500 whitespace-nowrap text-[11px]">주차 이동:</span>';
+      if (viewYear === TODAY.y && viewMonth === TODAY.m) {
+        html += `<button onclick="scrollToDay(${TODAY.d})" class="px-2.5 py-1 bg-[#F2E5D0] hover:bg-[#EFE7D8] text-[#7A5023] rounded-lg whitespace-nowrap border border-[#D6BC97]">오늘</button>`;
+      }
+      let start = 1, week = 1;
+      while (start <= daysInMonth) {
+        const end = Math.min(daysInMonth, start + (6 - new Date(viewYear, viewMonth - 1, start).getDay()));
+        html += `<button onclick="scrollToDay(${start})" class="px-2.5 py-1 bg-stone-100 hover:bg-[#EFE7D8] rounded-lg whitespace-nowrap border border-stone-200">${week}주 (${start === end ? start : `${start}~${end}`}일)</button>`;
+        start = end + 1;
+        week++;
+      }
+      bar.innerHTML = html;
+    }
+
+    // 뷰 전환 함수 ('list' 또는 'grid')
+    function switchView(mode) {
+      currentView = mode;
+      const listView = document.getElementById('calendar-list-view');
+      const gridView = document.getElementById('calendar-section');
+      const btnList = document.getElementById('view-btn-list');
+      const btnGrid = document.getElementById('view-btn-grid');
+
+      if (mode === 'list') {
+        if (listView) listView.classList.remove('hidden');
+        if (gridView) gridView.classList.add('hidden');
+        if (btnList) {
+          btnList.className = 'px-2.5 py-1 rounded-lg transition bg-white text-stone-800 shadow-xs flex items-center gap-1 font-bold';
+        }
+        if (btnGrid) {
+          btnGrid.className = 'px-2.5 py-1 rounded-lg transition text-stone-500 hover:text-stone-800 flex items-center gap-1 font-medium';
+        }
+      } else {
+        if (listView) listView.classList.add('hidden');
+        if (gridView) gridView.classList.remove('hidden');
+        if (btnGrid) {
+          btnGrid.className = 'px-2.5 py-1 rounded-lg transition bg-white text-stone-800 shadow-xs flex items-center gap-1 font-bold';
+        }
+        if (btnList) {
+          btnList.className = 'px-2.5 py-1 rounded-lg transition text-stone-500 hover:text-stone-800 flex items-center gap-1 font-medium';
+        }
+      }
+    }
+
+    // 특정 일자로 스크롤 이동
+    function scrollToDay(day) {
+      const card = document.getElementById('card-day-' + day);
+      if (card) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        card.classList.add('ring-2', 'ring-[#B47C56]');
+        setTimeout(() => {
+          card.classList.remove('ring-2', 'ring-[#B47C56]');
+        }, 1200);
+      }
+    }
+
+    function holidayOf(day) {
+      return HOLIDAYS[dateStr(day)] || '';
+    }
+
+    // 1. 스마트폰 전용 큰 글씨 카드 리스트 렌더링
+    function renderMobileList() {
+      const container = document.getElementById('mobile-cards-container');
+      if (!container) return;
+      container.innerHTML = '';
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dateObj = new Date(viewYear, viewMonth - 1, day);
+        const dayOfWeek = dateObj.getDay();
+        const dayOfWeekStr = DAYS_OF_WEEK_KO[dayOfWeek];
+        const future = isFuture(day);
+
+        let dayColor = 'text-stone-800';
+        let badgeBg = 'bg-stone-100 text-stone-700';
+        if (dayOfWeek === 0) {
+          dayColor = 'text-[#D32F2F]';
+          badgeBg = 'bg-red-50 text-[#D32F2F] border border-red-200';
+        } else if (dayOfWeek === 6) {
+          dayColor = 'text-[#1976D2]';
+          badgeBg = 'bg-blue-50 text-[#1976D2] border border-blue-200';
+        }
+
+        let holidayHtml = '';
+        const holiday = holidayOf(day);
+        if (holiday) {
+          holidayHtml = `<span class="text-xs font-bold text-[#D32F2F] bg-red-100 px-2 py-0.5 rounded-full ml-1.5">${holiday}</span>`;
+          dayColor = 'text-[#D32F2F]';
+        }
+        const todayHtml = isToday(day)
+          ? '<span class="text-xs font-bold text-white bg-[#B47C56] px-2 py-0.5 rounded-full ml-1.5">오늘</span>'
+          : '';
+
+        const dayState = checkData[day] || {};
+        const completedCount = HABITS.filter(h => dayState[h.key]).length;
+        const isAllDone = completedCount === 4;
+
+        const card = document.createElement('div');
+        card.id = 'card-day-' + day;
+        card.className = `p-3.5 sm:p-4 rounded-xl border transition-all shadow-xs ${
+          isAllDone
+            ? 'bg-[#FCF9F2] border-[#D9B575] ring-1 ring-[#D9B575]/50'
+            : isToday(day)
+              ? 'bg-white border-[#B47C56]'
+              : 'bg-white border-stone-200 hover:border-stone-300'
+        } ${future ? 'opacity-50' : ''}`;
+
+        let cardHeader = `
+          <div class="flex items-center justify-between pb-2 mb-2.5 border-b border-stone-100">
+            <div class="flex items-center gap-2">
+              <span class="font-extrabold text-xl sm:text-2xl ${dayColor}">${day}일</span>
+              <span class="text-xs sm:text-sm font-bold px-2 py-0.5 rounded-md ${badgeBg}">${dayOfWeekStr}요일</span>
+              ${holidayHtml}${todayHtml}
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-semibold ${isAllDone ? 'text-[#8C6228] font-bold' : 'text-stone-400'}">
+                ${completedCount}/4 완료
+              </span>
+              <button
+                onclick="toggleAllHabitsOfDay(${day})"
+                ${future ? 'disabled' : ''}
+                class="text-xs px-2.5 py-1 rounded-lg border font-semibold transition ${
+                  isAllDone
+                    ? 'bg-[#F2E5D0] text-[#7A5023] border-[#D6BC97]'
+                    : 'bg-stone-50 text-stone-600 border-stone-200 hover:bg-stone-100'
+                } ${future ? 'cursor-not-allowed' : ''}"
+              >
+                ${isAllDone ? '✓ 모두 완료됨' : '전체 체크'}
+              </button>
+            </div>
+          </div>
+        `;
+
+        // 스마트폰에서 한 손가락으로 누르기 쉬운 큼직한 4개 터치 버튼 (2열 그리드)
+        let buttonsHtml = `<div class="grid grid-cols-2 gap-2">`;
+        HABITS.forEach(h => {
+          const isChecked = !!dayState[h.key];
+          buttonsHtml += `
+            <button
+              type="button"
+              onclick="toggleHabit(${day}, '${h.key}', event)"
+              ${future ? 'disabled' : ''}
+              class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition text-left ${
+                isChecked
+                  ? 'bg-[#EFE5D5] border-[#C4AC90] text-[#4A3222] font-bold shadow-xs'
+                  : 'bg-[#FAF8F5] border-stone-200 text-stone-700 hover:bg-stone-100'
+              } ${future ? 'cursor-not-allowed' : ''}"
+            >
+              <div class="flex items-center gap-2">
+                <span class="text-base sm:text-lg">${h.emoji}</span>
+                <span class="text-sm font-bold">${h.name}</span>
+              </div>
+              <span class="w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${
+                isChecked ? 'bg-[#7A5438] border-[#7A5438] text-white' : 'bg-white border-stone-400'
+              }">
+                ${isChecked ? '<svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>' : ''}
+              </span>
+            </button>
+          `;
+        });
+        buttonsHtml += `</div>`;
+
+        card.innerHTML = cardHeader + buttonsHtml;
+        container.appendChild(card);
+      }
+    }
+
+    // 2. 데스크톱 및 A3 인쇄용 그리드 렌더링
+    function renderGrid() {
+      const grid = document.getElementById('calendar-grid');
+      if (!grid) return;
+      grid.innerHTML = '';
+
+      // 이전 달 빈 칸
+      for (let i = 0; i < firstDayIndex; i++) {
+        const emptyCell = document.createElement('div');
+        emptyCell.className = "bg-[#FAF7F2]/50 rounded-xl border border-dashed border-stone-200 min-h-[96px] flex flex-col p-2 opacity-35";
+        grid.appendChild(emptyCell);
+      }
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dayDate = new Date(viewYear, viewMonth - 1, day);
+        const dayOfWeek = dayDate.getDay();
+        const future = isFuture(day);
+
+        let dateColor = 'text-stone-800';
+        if (dayOfWeek === 0) dateColor = 'text-[#D32F2F]';
+        else if (dayOfWeek === 6) dateColor = 'text-[#1976D2]';
+
+        let holidayTag = '';
+        const holiday = holidayOf(day);
+        if (holiday) {
+          dateColor = 'text-[#D32F2F]';
+          holidayTag = `<span class="text-[10px] font-bold text-[#D32F2F] ml-1 bg-red-50 px-1 py-0.2 rounded truncate">${holiday}</span>`;
+        }
+
+        const dayState = checkData[day] || {};
+        const completedCount = HABITS.filter(h => dayState[h.key]).length;
+        const isAllDone = completedCount === 4;
+
+        const cell = document.createElement('div');
+        cell.className = `day-card rounded-xl border transition-all flex flex-col justify-between p-2 min-h-[96px] sm:min-h-[105px] ${
+          isAllDone
+            ? 'bg-[#FCF9F2] border-[#D9B575] shadow-xs ring-1 ring-[#D9B575]/40'
+            : isToday(day)
+              ? 'bg-white border-[#B47C56] ring-1 ring-[#B47C56]/50'
+              : 'bg-white border-stone-300 hover:border-stone-400'
+        }`;
+
+        let topBar = `
+          <div class="flex items-center justify-between mb-1">
+            <div class="flex items-center min-w-0">
+              <span class="font-bold text-sm sm:text-base ${dateColor}">${day}</span>
+              ${holidayTag}
+            </div>
+            ${isAllDone ? '<span class="text-[10px] font-bold text-[#8C6228] bg-[#F7E7C4] px-1.5 py-0.5 rounded-md">★완료</span>' : ''}
+          </div>
+        `;
+
+        let habitsHtml = `<div class="grid grid-cols-2 gap-1 mt-auto">`;
+        HABITS.forEach(h => {
+          const isChecked = !!dayState[h.key];
+          habitsHtml += `
+            <button
+              type="button"
+              onclick="toggleHabit(${day}, '${h.key}', event)"
+              ${future ? 'disabled' : ''}
+              class="check-btn check-item w-full flex items-center gap-1.5 px-1.5 py-1 rounded-lg text-left text-xs transition border ${
+                isChecked
+                  ? 'bg-[#EFE7D8] text-[#523A2A] border-[#C8B39B] font-bold'
+                  : 'bg-[#FAF8F5] text-stone-600 border-stone-200 hover:bg-[#F2ECE1]'
+              } ${future ? 'opacity-50 cursor-not-allowed' : ''}"
+              title="${h.name}"
+            >
+              <span class="box-icon inline-flex items-center justify-center w-3.5 h-3.5 rounded border ${
+                isChecked ? 'bg-[#7A5438] border-[#7A5438] text-white' : 'border-stone-400 bg-white'
+              }">
+                ${isChecked ? '<svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>' : ''}
+              </span>
+              <span class="truncate text-[11px] leading-none">${h.short}</span>
+            </button>
+          `;
+        });
+        habitsHtml += `</div>`;
+
+        cell.innerHTML = topBar + habitsHtml;
+        grid.appendChild(cell);
+      }
+
+      // 마지막 주 빈 칸
+      const totalCells = firstDayIndex + daysInMonth;
+      const targetCells = totalCells <= 28 ? 28 : totalCells <= 35 ? 35 : 42;
+      for (let i = totalCells; i < targetCells; i++) {
+        const emptyCell = document.createElement('div');
+        emptyCell.className = "bg-[#FAF7F2]/50 rounded-xl border border-dashed border-stone-200 min-h-[96px] flex flex-col p-2 opacity-35";
+        grid.appendChild(emptyCell);
+      }
+      grid.style.setProperty('--weeks', targetCells / 7);
+    }
+
+    function renderAllViews() {
+      renderMobileList();
+      renderGrid();
+    }
+
+    // 통계 및 진도율 갱신 (그 달 전체 일수 기준)
+    function updateProgress() {
+      let totalChecked = 0;
+      const stats = { word: 0, prayer: 0, read: 0, worship: 0 };
+      const maxPossible = daysInMonth * 4;
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const day = checkData[d] || {};
+        HABITS.forEach(h => {
+          if (day[h.key]) {
+            totalChecked++;
+            stats[h.key]++;
+          }
+        });
+      }
+
+      const percent = Math.round((totalChecked / maxPossible) * 100);
+
+      const fillBar = document.getElementById('progress-bar-fill');
+      const textBar = document.getElementById('progress-text');
+      if (fillBar) fillBar.style.width = percent + '%';
+      if (textBar) textBar.innerText = `${percent}% (${totalChecked}/${maxPossible})`;
+
+      HABITS.forEach(h => {
+        const count = stats[h.key];
+        const itemPercent = Math.round((count / daysInMonth) * 100);
+        const statLabel = document.getElementById('stat-' + h.key);
+        const barElem = document.getElementById('bar-' + h.key);
+        if (statLabel) statLabel.innerText = `${count}일 / ${daysInMonth}일 (${itemPercent}%)`;
+        if (barElem) barElem.style.width = itemPercent + '%';
+      });
+    }
+
+    function toggleModal(id, show) {
+      const modal = document.getElementById(id);
+      if (!modal) return;
+      if (show) modal.classList.remove('hidden');
+      else modal.classList.add('hidden');
+    }
+
+    // 보고 있는 달만 초기화 (목장 시트에도 반영)
+    function resetAllChecks() {
+      if (!confirm(`${viewMonth}월 체크를 모두 지울까요?`)) return;
+      const touched = Object.keys(checkData).map(Number).filter(day => !isFuture(day));
+      checkData = {};
+      saveData();
+      renderAllViews();
+      updateProgress();
+      toggleModal('progress-modal', false);
+      if (API_URL && profile && touched.length) postToSheet({ records: touched.map(recordFor) });
+    }
+
+    // 디바이스 화면 너비에 맞춘 초기 뷰 설정
+    function initViewMode() {
+      if (window.innerWidth < 768) {
+        switchView('list'); // 모바일 화면에서는 큰글씨 리스트 뷰 기본 실행
+      } else {
+        switchView('grid'); // PC 화면에서는 달력형 뷰 기본 실행
+      }
+    }
+
+    // 초기 실행
+    let started = false;
+    function start() {
+      if (started) return;
+      started = true;
+      migrateLegacy();
+      fillMonthPickers();
+      initViewMode();
+      renderProfile();
+      applyMonth();
+      if (!profile && !safeGetItem('seum_profile_later')) openProfile();
+    }
+
+    window.addEventListener('DOMContentLoaded', start);
+
+    // 오프라인에서도 열리도록 서비스 워커 등록
+    if ('serviceWorker' in navigator && location.protocol === 'https:') {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(() => {});
+      });
+    }
+
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      start();
+    }
+  </script>
+</body>
+</html>

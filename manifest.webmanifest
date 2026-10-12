@@ -1,0 +1,17 @@
+{
+  "name": "세움 신앙점검표 - 말씀 및 묵상 달력",
+  "short_name": "세움 신앙점검표",
+  "description": "천안세움교회 4대 신앙생활(말씀·기도·통독·예배) 실천 체크표",
+  "lang": "ko",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F3EFE7",
+  "theme_color": "#F3EFE7",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

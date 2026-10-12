@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; box-sizing: border-box; }
+  body { width: 1200px; height: 630px; background: #F3EFE7; font-family: 'Noto Sans KR', sans-serif; color: #2b2523; padding: 54px 72px; }
+  h1 { font-size: 84px; font-weight: 900; letter-spacing: -2px; }
+  .verse { font-size: 28px; font-weight: 500; color: #5a504c; margin-top: 4px; }
+  .card { margin-top: 34px; background: #fcfcfb; border-radius: 28px; padding: 22px 70px 20px 34px; box-shadow: 0 2px 4px rgba(0,0,0,.06); }
+  .lane { position: relative; height: 104px; }
+  .lane + .lane { border-top: 3px dashed #d8d6cf; }
+  .name { position: absolute; left: 0; top: 14px; font-size: 30px; font-weight: 700; display: flex; align-items: center; gap: 12px; }
+  .name i { width: 18px; height: 18px; border-radius: 5px; background: var(--c); }
+  .track { position: absolute; left: 0; right: 0; bottom: 16px; height: 18px; border-radius: 6px; background: #ebe9e3; }
+  .bar { position: absolute; left: 0; bottom: 16px; height: 18px; border-radius: 6px; background: var(--c); width: var(--w); }
+  .runner { position: absolute; bottom: 30px; left: var(--w); width: 54px; height: 71px; margin-left: -36px; background: var(--c);
+    -webkit-mask: url(../../assets/runner.svg) var(--f) 0 / 486px 71px no-repeat; }
+  .finish { position: absolute; right: -40px; bottom: 6px; width: 18px; height: 92px; border: 2px solid #0b0b0b;
+    background: repeating-conic-gradient(#0b0b0b 0 25%, #fff 0 50%) 0 0 / 16px 16px; }
+</style></head>
+<body>
+  <h1>🏃 믿음의 경주</h1>
+  <div class="verse">“우리 앞에 당한 경주를 인내로써 경주하며” (히 12:1) · 목장별 이번 주 실천율</div>
+  <div class="card">
+    <div class="lane" style="--c:#2a78d6;--w:72%;--f:-216px"><div class="name"><i></i>나종혁 목장</div><div class="track"></div><div class="bar"></div><div class="runner"></div><div class="finish"></div></div>
+    <div class="lane" style="--c:#eb6834;--w:58%;--f:-54px"><div class="name"><i></i>임백호 목장</div><div class="track"></div><div class="bar"></div><div class="runner"></div><div class="finish"></div></div>
+    <div class="lane" style="--c:#1baf7a;--w:86%;--f:-378px"><div class="name"><i></i>정찬민 목장</div><div class="track"></div><div class="bar"></div><div class="runner"></div><div class="finish"></div></div>
+  </div>
+</body></html>

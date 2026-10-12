@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>믿음의 경주</title>
+<meta property="og:title" content="믿음의 경주 - 이번 주 목장 실천율">
+<meta property="og:description" content="말씀·기도·통독·예배, 함께 달려갑니다">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://hyukdani90-ux.github.io/seum-calendar/icons/og-race.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<style>
+  :root {
+    color-scheme: light;
+    --surface-0: #f4f3ef;
+    --surface-1: #fcfcfb;
+    --track: #ebe9e3;
+    --lane-line: #d8d6cf;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted: #7a7973;
+    --finish-a: #0b0b0b;
+    --finish-b: #fcfcfb;
+    --series-1: #2a78d6;
+    --series-2: #eb6834;
+    --series-3: #1baf7a;
+    --skin: #f1c9a5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --surface-0: #111110;
+      --surface-1: #1a1a19;
+      --track: #262624;
+      --lane-line: #3a3a37;
+      --text-primary: #f0efec;
+      --text-secondary: #c3c2b7;
+      --text-muted: #8f8e86;
+      --finish-a: #f0efec;
+      --finish-b: #1a1a19;
+      --series-1: #3987e5;
+      --series-2: #d95926;
+      --series-3: #199e70;
+      --skin: #d9b08c;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface-0: #111110;
+    --surface-1: #1a1a19;
+    --track: #262624;
+    --lane-line: #3a3a37;
+    --text-primary: #f0efec;
+    --text-secondary: #c3c2b7;
+    --text-muted: #8f8e86;
+    --finish-a: #f0efec;
+    --finish-b: #1a1a19;
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --skin: #d9b08c;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--surface-0);
+    color: var(--text-primary);
+    font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  main { max-width: 760px; margin: 0 auto; padding: 24px 16px 48px; }
+
+  header h1 { margin: 0; font-size: 26px; letter-spacing: -0.02em; }
+  header .verse { margin: 6px 0 0; color: var(--text-secondary); font-size: 14px; line-height: 1.5; }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 14px 0 18px; color: var(--text-muted); font-size: 13px; }
+  .demo { color: var(--text-secondary); font-weight: 600; }
+
+  .card { background: var(--surface-1); border-radius: 16px; padding: 20px 16px 14px; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+
+  .lane { position: relative; padding: 10px 0 14px; border-bottom: 1px dashed var(--lane-line); }
+  .lane:last-of-type { border-bottom: 0; }
+  .lane-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  .lane-name { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; }
+  .swatch { width: 10px; height: 10px; border-radius: 3px; background: var(--c); }
+  .lane-sub { color: var(--text-muted); font-size: 12px; font-weight: 400; }
+  .lane-rate { font-variant-numeric: tabular-nums; font-weight: 800; font-size: 20px; }
+
+  /* 트랙: 오른쪽에 결승선, 막대 끝에 달리는 캐릭터 */
+  .track { position: relative; height: 66px; margin-right: 14px; }
+  .track-bg { position: absolute; left: 0; right: 0; bottom: 6px; height: 12px; border-radius: 4px; background: var(--track); }
+  .bar { position: absolute; left: 0; bottom: 6px; height: 12px; border-radius: 4px; background: var(--c); width: 0; transition: width 2.4s cubic-bezier(.2,.7,.25,1); }
+  .finish {
+    position: absolute; right: -14px; bottom: 0; width: 10px; height: 66px; border-radius: 2px;
+    background: repeating-conic-gradient(var(--finish-a) 0 25%, var(--finish-b) 0 50%) 0 0 / 10px 10px;
+    border: 1px solid var(--finish-a);
+  }
+  /* 9프레임 달리기 실루엣 (assets/runner.svg, 프레임 64x84). 마스크로 써서 레인 색을 그대로 입힌다 */
+  .runner {
+    position: absolute; bottom: 12px; left: 0; width: 44px; height: 58px; margin-left: -30px;
+    background: var(--c);
+    -webkit-mask: url(assets/runner.svg) 0 0 / 396px 58px no-repeat;
+            mask: url(assets/runner.svg) 0 0 / 396px 58px no-repeat;
+    animation: run .72s steps(9) infinite, bob .36s ease-in-out infinite;
+    transition: left 2.4s cubic-bezier(.2,.7,.25,1); pointer-events: none;
+  }
+  @keyframes run { to { -webkit-mask-position: -396px 0; mask-position: -396px 0; } }
+  @keyframes bob { 0%,100% { translate: 0 0; } 50% { translate: 0 -2px; } }
+  /* 결승선 도착: 제자리 점프 */
+  .runner.done { animation: run 1.4s steps(9) infinite, jump .7s ease-in-out infinite; }
+  @keyframes jump { 0%,100% { translate: 0 0; } 40% { translate: 0 -10px; } }
+  /* 아직 출발 전(0%)은 멈춘 자세 */
+  .runner.idle { animation: none; }
+
+  .hit { position: absolute; inset: 0; cursor: default; }
+  .tooltip {
+    position: fixed; z-index: 10; pointer-events: none; opacity: 0; transition: opacity .12s;
+    background: var(--surface-1); color: var(--text-primary); border-radius: 10px; padding: 10px 12px; font-size: 13px;
+    box-shadow: 0 6px 24px rgba(0,0,0,.18); min-width: 150px;
+  }
+  .tooltip.show { opacity: 1; }
+  .tooltip b { display: block; margin-bottom: 6px; }
+  .tooltip .row { display: flex; justify-content: space-between; gap: 16px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 12px; color: var(--text-secondary); font-size: 12px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+
+  details { margin-top: 16px; color: var(--text-secondary); font-size: 13px; }
+  summary { cursor: pointer; }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; font-variant-numeric: tabular-nums; }
+  th, td { padding: 6px 4px; text-align: right; border-bottom: 1px solid var(--lane-line); }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: var(--text-muted); font-weight: 600; }
+
+  .error { margin-top: 12px; color: var(--text-secondary); font-size: 13px; }
+  @media (prefers-reduced-motion: reduce) {
+    .bar, .runner { transition: none; }
+    .runner { animation: none !important; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>🏃 믿음의 경주</h1>
+    <p class="verse">“우리 앞에 당한 경주를 인내로써 경주하며 믿음의 주요 또 온전케 하시는 이인 예수를 바라보자” (히 12:1-2)</p>
+  </header>
+  <div class="meta">
+    <span id="week">이번 주</span>
+    <span id="updated"></span>
+    <span id="demo" class="demo" hidden>예시 데이터로 보는 중 (API 주소 미설정)</span>
+  </div>
+
+  <section class="card" aria-label="목장별 이번 주 실천율">
+    <div id="lanes"></div>
+    <div class="legend" id="legend"></div>
+  </section>
+
+  <details>
+    <summary>표로 보기 (항목별 실천율)</summary>
+    <table id="table"></table>
+  </details>
+  <p class="error" id="error" hidden></p>
+</main>
+<div class="tooltip" id="tooltip" role="status"></div>
+
+<script src="config.js"></script>
+<script>
+  // Apps Script 웹앱 배포 주소를 넣거나, 페이지 주소에 ?api=... 로 넘긴다.
+  const API_URL = new URLSearchParams(location.search).get('api') || (window.APP_CONFIG || {}).API_URL || '';
+  const REFRESH_MS = 60 * 1000;
+  const COLORS = ['var(--series-1)', 'var(--series-2)', 'var(--series-3)'];
+
+  const DEMO = {
+    weekStart: '', days: 4, updatedAt: new Date().toISOString(),
+    groups: [
+      { group: '나종혁 목장', members: 8, rate: 0.72, items: [{label:'말씀',rate:.81},{label:'기도',rate:.75},{label:'통독',rate:.56},{label:'예배',rate:.75}] },
+      { group: '임백호 목장', members: 7, rate: 0.58, items: [{label:'말씀',rate:.64},{label:'기도',rate:.61},{label:'통독',rate:.43},{label:'예배',rate:.64}] },
+      { group: '정찬민 목장', members: 9, rate: 1.0,  items: [{label:'말씀',rate:1},{label:'기도',rate:1},{label:'통독',rate:1},{label:'예배',rate:1}] },
+    ],
+  };
+
+  const pct = r => Math.round(r * 100) + '%';
+  const $ = id => document.getElementById(id);
+
+
+  function buildLanes(groups) {
+    const lanes = $('lanes');
+    lanes.innerHTML = '';
+    groups.forEach((g, i) => {
+      const lane = document.createElement('div');
+      lane.className = 'lane';
+      lane.style.setProperty('--c', COLORS[i % COLORS.length]);
+      lane.dataset.group = g.group;
+      lane.innerHTML = `
+        <div class="lane-head">
+          <div class="lane-name"><span class="swatch"></span>${g.group} <span class="lane-sub" data-k="members"></span></div>
+          <div class="lane-rate" data-k="rate">0%</div>
+        </div>
+        <div class="track">
+          <div class="track-bg"></div>
+          <div class="bar"></div>
+          <div class="finish" title="결승선 100%"></div>
+          <div class="runner idle" aria-hidden="true"></div>
+          <div class="hit" tabindex="0" aria-label="${g.group} 상세"></div>
+        </div>`;
+      lanes.appendChild(lane);
+      bindTooltip(lane);
+    });
+    $('legend').innerHTML = groups.map((g, i) =>
+      `<span><i class="swatch" style="--c:${COLORS[i % COLORS.length]}"></i>${g.group}</span>`).join('');
+  }
+
+  function render(data) {
+    const groups = data.groups || [];
+    const existing = [...document.querySelectorAll('.lane')].map(l => l.dataset.group).join('|');
+    if (existing !== groups.map(g => g.group).join('|')) buildLanes(groups);
+
+    groups.forEach(g => {
+      const lane = document.querySelector(`.lane[data-group="${CSS.escape(g.group)}"]`);
+      lane._data = g;
+      const rate = Math.max(0, Math.min(1, g.rate || 0));
+      lane.querySelector('[data-k="members"]').textContent = `${g.members}명`;
+      animateNumber(lane.querySelector('[data-k="rate"]'), rate);
+      lane.querySelector('.bar').style.width = (rate * 100) + '%';
+      const runner = lane.querySelector('.runner');
+      runner.style.left = (rate * 100) + '%';
+      runner.classList.remove('idle', 'done');
+      if (rate === 0) runner.classList.add('idle');
+      // 도착 애니메이션은 막대가 다 자란 뒤에
+      if (rate >= 1) setTimeout(() => runner.classList.add('done'), 2400);
+    });
+
+    $('week').textContent = data.weekStart ? `${data.weekStart} 주간 · ${data.days}일째` : `이번 주 · ${data.days}일째`;
+    $('updated').textContent = '업데이트 ' + new Date(data.updatedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+
+    const labels = (groups[0] && groups[0].items || []).map(it => it.label);
+    $('table').innerHTML =
+      `<tr><th>목장</th><th>인원</th>${labels.map(l => `<th>${l}</th>`).join('')}<th>전체</th></tr>` +
+      groups.map(g => `<tr><td>${g.group}</td><td>${g.members}</td>${g.items.map(it => `<td>${pct(it.rate)}</td>`).join('')}<td><b>${pct(g.rate)}</b></td></tr>`).join('');
+  }
+
+  function animateNumber(el, to) {
+    const from = el._v || 0, t0 = performance.now(), dur = 2400;
+    el._v = to;
+    const step = now => {
+      const p = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - p, 3);
+      el.textContent = pct(from + (to - from) * e);
+      if (p < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+
+  function bindTooltip(lane) {
+    const tip = $('tooltip'), hit = lane.querySelector('.hit');
+    const show = ev => {
+      const g = lane._data; if (!g) return;
+      tip.innerHTML = `<b>${g.group} · ${pct(g.rate)}</b>` +
+        g.items.map(it => `<div class="row"><span>${it.label}</span><span>${pct(it.rate)}</span></div>`).join('');
+      const r = hit.getBoundingClientRect();
+      const x = ev && ev.clientX ? ev.clientX : r.left + r.width / 2;
+      tip.style.left = Math.min(window.innerWidth - 170, Math.max(8, x - 75)) + 'px';
+      tip.style.top = (r.top - tip.offsetHeight - 8 < 8 ? r.bottom + 8 : r.top - tip.offsetHeight - 8) + 'px';
+      tip.classList.add('show');
+    };
+    const hide = () => tip.classList.remove('show');
+    hit.addEventListener('pointermove', show);
+    hit.addEventListener('pointerleave', hide);
+    hit.addEventListener('focus', show);
+    hit.addEventListener('blur', hide);
+  }
+
+  async function load() {
+    if (!API_URL) { $('demo').hidden = false; render(DEMO); return; }
+    try {
+      const res = await fetch(API_URL + (API_URL.includes('?') ? '&' : '?') + 'action=summary');
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || '불러오기 실패');
+      $('error').hidden = true;
+      render(data);
+    } catch (err) {
+      $('error').hidden = false;
+      $('error').textContent = '데이터를 불러오지 못했습니다. 잠시 후 다시 시도합니다. (' + err.message + ')';
+    }
+  }
+
+  load();
+  if (API_URL) setInterval(load, REFRESH_MS);
+</script>
+</body>
+</html>
