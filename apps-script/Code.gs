@@ -17,7 +17,8 @@
  * POST  { admin: 'delete',   key, group, name }                               -> 그 사람의 기록 모두 삭제
  * POST  { admin: 'setting',  key, group, name, countStart, excluded }          -> 계수 시작일('' = 첫 체크일) · 계수 제외
  *
- * 실천율 계산: 사람마다 '계수 시작일'부터 오늘(또는 기간 끝)까지의 날만 센다.
+ * 실천율 계산: 기간 전체를 목표로 한다 (목표 = 하루 4개 × 계수 일수).
+ *   계수 일수 = 사람마다 max(기간 시작, 계수 시작일) ~ 기간 끝. 기간이 진행될수록 실천율이 차오른다.
  *   계수 시작일 기본값 = 그 사람이 처음 체크한 해의 1월 1일 (단 SERVICE_START 이전은 세지 않음).
  *   늦게 합류한 분 등은 관리자 페이지에서 따로 정한다.
  *   목장 실천율 = 목장원 체크 수 합 / (목장원별 계수 일수 합 × 4). '계수 제외'인 사람은 빠진다.
@@ -140,7 +141,8 @@ function daysBetween_(a, b) {
 }
 
 /**
- * 기간 안의 사람별 집계. 사람마다 max(기간 시작, 계수 시작일) ~ min(기간 끝, 오늘)의 날만 센다.
+ * 기간 안의 사람별 집계. 목표 = max(기간 시작, 계수 시작일) ~ 기간 끝의 일수 × 4.
+ * (월간 31일 → 124, 4분기 92일 → 368, 1년 365일 → 1460. 개인 체크 화면의 '전체 실천율'과 같은 기준)
  * 계수 시작일 = 관리자가 정한 날, 없으면 처음 체크한 해의 1월 1일 (SERVICE_START보다 앞서지 않음).
  */
 function computePeople_(range) {
@@ -160,7 +162,8 @@ function computePeople_(range) {
     var yearStart = m.first.slice(0, 4) + '-01-01';
     var countStart = set.countStart || (yearStart > SERVICE_START ? yearStart : SERVICE_START);
     var from = countStart > range.start ? countStart : range.start;
-    var eligible = from <= last ? daysBetween_(from, last) : 0;
+    var targetDays = from <= range.end ? daysBetween_(from, range.end) : 0;
+    var elapsedDays = from <= last ? daysBetween_(from, last) : 0;
     var items = [0, 0, 0, 0], checks = 0, days = 0, lastDate = '';
     m.rows.forEach(function (r) {
       if (r.date < from || r.date > last) return;
@@ -172,8 +175,9 @@ function computePeople_(range) {
     return {
       group: m.group, name: m.name, first: m.first,
       countStart: countStart, countStartSet: set.countStart || '', excluded: !!set.excluded,
-      eligibleDays: eligible, checks: checks, days: days, last: lastDate, items: items,
-      rate: eligible ? checks / (eligible * ITEMS.length) : null
+      targetDays: targetDays, elapsedDays: elapsedDays, target: targetDays * ITEMS.length,
+      checks: checks, days: days, last: lastDate, items: items,
+      rate: targetDays ? checks / (targetDays * ITEMS.length) : null
     };
   });
 }
@@ -182,9 +186,9 @@ function groupTotals_(people) {
   return GROUPS.map(function (g) {
     var members = 0, possible = 0, checked = 0, items = [0, 0, 0, 0];
     people.forEach(function (p) {
-      if (p.group !== g || p.excluded || !p.eligibleDays) return;
+      if (p.group !== g || p.excluded || !p.targetDays) return;
       members++;
-      possible += p.eligibleDays;
+      possible += p.targetDays;
       checked += p.checks;
       p.items.forEach(function (v, i) { items[i] += v; });
     });
@@ -208,6 +212,7 @@ function periodSummary_(range) {
     ok: true, period: range.period, label: range.label, start: range.start, end: range.end,
     countFrom: from,
     days: last >= from ? daysBetween_(from, last) : 0,
+    totalDays: range.end >= from ? daysBetween_(from, range.end) : 0,
     updatedAt: new Date().toISOString(),
     groups: groupTotals_(computePeople_(range))
   };
@@ -256,11 +261,11 @@ function admin_(b) {
 /** 목장별 현황 + 개인별 현황 (기간: 월·분기·연, anchor 날짜가 든 기간) */
 function adminOverview_(period, anchor) {
   var range = periodRange_(period || 'month', anchor);
-  var people = computePeople_(range).filter(function (p) { return p.eligibleDays > 0 || p.checks > 0; });
+  var people = computePeople_(range).filter(function (p) { return p.targetDays > 0 || p.checks > 0; });
   var summary = periodSummary_(range);
   return {
     ok: true, period: range.period, label: range.label, start: range.start, end: range.end,
-    countFrom: summary.countFrom, days: summary.days, groupNames: GROUPS, groups: groupTotals_(people), members: people,
+    countFrom: summary.countFrom, days: summary.days, totalDays: summary.totalDays, groupNames: GROUPS, groups: groupTotals_(people), members: people,
     updatedAt: summary.updatedAt
   };
 }

@@ -306,7 +306,7 @@
       const future = data.start > TODAY;
       $('meta').textContent = (beforeService ? '서비스 시작(2026년 10월) 전 기간'
         : future ? '아직 시작 전인 기간'
-        : `${running ? `오늘까지 ${data.days}일` : `${data.days}일 전체`} 기준`) + ' · ' +
+        : `목표 ${data.totalDays}일 × 4${running ? ` · 오늘 ${data.days}일째` : ''}`) + ' · ' +
         new Date(data.updatedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) + ' 업데이트';
       $('next').disabled = data.end >= TODAY;
       renderGroups();
@@ -378,7 +378,8 @@
         <div class="m-rate">${m.rate === null ? '-' : pct(m.rate)}</div>
         <div class="m-detail">
           <div class="bar"><i style="width:${Math.min(100, (m.rate || 0) * 100)}%"></i></div>
-          ${ITEM_LABELS.map((l, k) => `${l} ${m.items[k]}`).join(' · ')} &nbsp;|&nbsp; 체크한 날 ${m.days}/${m.eligibleDays}일
+          체크 <b>${m.checks}</b> / 목표 ${m.target} &nbsp;·&nbsp; ${ITEM_LABELS.map((l, k) => `${l} ${m.items[k]}`).join(' · ')}<br>
+          체크한 날 ${m.days}일 (지금까지 ${m.elapsedDays}일 / 기간 ${m.targetDays}일)
         </div>
         <div class="m-foot">
           <span>계수 시작 ${ymdText(m.countStart)}${m.countStartSet ? ' (직접 설정)' : ' (기본)'} · 마지막 체크 ${md(m.last)}</span>
