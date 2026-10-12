@@ -77,7 +77,16 @@
 
   header h1 { margin: 0; font-size: 26px; letter-spacing: -0.02em; }
   header .verse { margin: 6px 0 0; color: var(--text-secondary); font-size: 14px; line-height: 1.5; }
-  .meta { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 14px 0 18px; color: var(--text-muted); font-size: 13px; }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 10px 0 16px; color: var(--text-muted); font-size: 13px; }
+  .meta #period { color: var(--text-secondary); font-weight: 700; }
+
+  /* 월간·분기·연간 (항상 월간으로 시작) */
+  .periods { display: inline-flex; gap: 4px; padding: 4px; margin-top: 16px; border-radius: 12px; background: var(--track); }
+  .periods button {
+    border: 0; background: transparent; color: var(--text-secondary); font: inherit; font-size: 14px; font-weight: 700;
+    padding: 7px 16px; border-radius: 9px; cursor: pointer;
+  }
+  .periods button[aria-selected="true"] { background: var(--surface-1); color: var(--text-primary); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
   .demo { color: var(--text-secondary); font-weight: 600; }
 
   .card { background: var(--surface-1); border-radius: 16px; padding: 20px 16px 14px; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
@@ -149,13 +158,18 @@
     <h1>🏃 믿음의 경주</h1>
     <p class="verse">“우리 앞에 당한 경주를 인내로써 경주하며 믿음의 주요 또 온전케 하시는 이인 예수를 바라보자” (히 12:1-2)</p>
   </header>
+  <div class="periods" role="tablist" aria-label="기간">
+    <button type="button" role="tab" data-p="month" aria-selected="true">월간</button>
+    <button type="button" role="tab" data-p="quarter" aria-selected="false">분기</button>
+    <button type="button" role="tab" data-p="year" aria-selected="false">연간</button>
+  </div>
   <div class="meta">
     <span id="period">이번 달</span>
     <span id="updated"></span>
     <span id="demo" class="demo" hidden>예시 데이터로 보는 중 (API 주소 미설정)</span>
   </div>
 
-  <section class="card" aria-label="목장별 이번 달 실천율">
+  <section class="card" aria-label="목장별 실천율">
     <div id="lanes"></div>
     <div class="legend" id="legend"></div>
   </section>
@@ -228,18 +242,15 @@
       animateNumber(lane.querySelector('[data-k="rate"]'), rate);
       lane.querySelector('.bar').style.width = (rate * 100) + '%';
       const runner = lane.querySelector('.runner');
-      runner.style.left = (rate * 100) + '%';
+      // 0% 근처에서도 캐릭터가 카드 밖으로 나가지 않게
+      runner.style.left = `max(30px, ${rate * 100}%)`;
       runner.classList.remove('idle', 'done');
       if (rate === 0) runner.classList.add('idle');
       // 도착 애니메이션은 막대가 다 자란 뒤에
       if (rate >= 1) setTimeout(() => runner.classList.add('done'), 2400);
     });
 
-    // 월간(기본). 시트 백엔드를 아직 새 버전으로 배포하지 않았다면 주간 데이터가 와도 그대로 보여준다
-    const monthNum = data.month ? +data.month.slice(5, 7) : new Date().getMonth() + 1;
-    $('period').textContent = data.weekStart
-      ? `${data.weekStart} 주간 · ${data.days}일째`
-      : `${monthNum}월 · ${data.days}일째`;
+    $('period').textContent = periodText(data);
     $('updated').textContent = '업데이트 ' + new Date(data.updatedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
 
     const labels = (groups[0] && groups[0].items || []).map(it => it.label);
@@ -278,11 +289,40 @@
     hit.addEventListener('blur', hide);
   }
 
+  // "10월 · 12일째", "4분기 (10~12월) · 12일째", "2026년 (10월부터) · 12일째"
+  function periodText(data) {
+    if (data.weekStart) return `${data.weekStart} 주간 · ${data.days}일째`;
+    if (!data.label) { // 예전 버전 시트 코드
+      const m = data.month ? +data.month.slice(5, 7) : new Date().getMonth() + 1;
+      return `${m}월 · ${data.days}일째`;
+    }
+    let text = data.period === 'year' ? data.label : data.label.replace(/^\d+년 /, '');
+    if (data.countFrom && data.start && data.countFrom > data.start && data.countFrom <= data.end) text += ` (${+data.countFrom.slice(5, 7)}월부터)`;
+    return `${text} · ${data.days}일째`;
+  }
+
+  // 기간 탭: 페이지를 열 때마다 월간으로 시작하고, 고른 기간은 기억하지 않는다
+  let period = 'month';
+  let loadSeq = 0;
+  document.querySelectorAll('.periods button').forEach(btn => btn.addEventListener('click', () => {
+    if (btn.dataset.p === period) return;
+    period = btn.dataset.p;
+    document.querySelectorAll('.periods button').forEach(b => b.setAttribute('aria-selected', b === btn));
+    load();
+  }));
+
   async function load() {
-    if (!API_URL) { $('demo').hidden = false; render(DEMO); return; }
+    if (!API_URL) {
+      $('demo').hidden = false;
+      const labels = { month: '2026년 10월', quarter: '2026년 4분기 (10~12월)', year: '2026년' };
+      render(Object.assign({}, DEMO, { period, label: labels[period] }));
+      return;
+    }
+    const seq = ++loadSeq;
     try {
-      const res = await fetch(API_URL + (API_URL.includes('?') ? '&' : '?') + 'action=summary');
+      const res = await fetch(API_URL + (API_URL.includes('?') ? '&' : '?') + 'action=summary&period=' + period);
       const data = await res.json();
+      if (seq !== loadSeq) return; // 그 사이 다른 탭을 눌렀으면 버림
       if (!data.ok) throw new Error(data.error || '불러오기 실패');
       $('error').hidden = true;
       render(data);

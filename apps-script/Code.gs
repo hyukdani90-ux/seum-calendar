@@ -6,15 +6,21 @@
  *
  * POST  { group, name, date: "YYYY-MM-DD", word, prayer, reading, worship }  -> 기록 저장(같은 날 재입력 시 덮어씀)
  * POST  { group, name, records: [{ date, word, prayer, reading, worship }, ...] } -> 여러 날 한 번에 저장
- * GET   ?action=summary[&month=YYYY-MM]                                       -> 목장별 월간 실천율 (기본: 이번 달)
- * GET   ?action=summary&week=YYYY-MM-DD                                       -> 목장별 주간 실천율
+ * GET   ?action=summary[&period=month|quarter|year]                           -> 목장별 이번 달/분기/해 실천율 (기본: 월간)
+ * GET   ?action=summary&month=YYYY-MM | &week=YYYY-MM-DD                      -> 특정 달 / 주
  * GET   ?action=mine&group=..&name=..[&week=YYYY-MM-DD | &month=YYYY-MM]       -> 내 기록(체크 달력 복원용)
  *
  * 관리자 (POST, 비밀번호는 Apps Script → 프로젝트 설정 → 스크립트 속성 ADMIN_KEY)
  * POST  { admin: 'login',    key }                                            -> 비밀번호 확인
- * POST  { admin: 'overview', key, month }                                     -> 목장별·개인별 월간 현황
+ * POST  { admin: 'overview', key, period, anchor }                            -> 목장별·개인별 현황 (anchor 날짜가 든 달/분기/해)
  * POST  { admin: 'move',     key, group, name, newGroup, newName }            -> 이름 바꾸기 / 다른 목장으로 옮기기
  * POST  { admin: 'delete',   key, group, name }                               -> 그 사람의 기록 모두 삭제
+ * POST  { admin: 'setting',  key, group, name, countStart, excluded }          -> 계수 시작일('' = 첫 체크일) · 계수 제외
+ *
+ * 실천율 계산: 사람마다 '계수 시작일'부터 오늘(또는 기간 끝)까지의 날만 센다.
+ *   계수 시작일 기본값 = 그 사람이 처음 체크한 해의 1월 1일 (단 SERVICE_START 이전은 세지 않음).
+ *   늦게 합류한 분 등은 관리자 페이지에서 따로 정한다.
+ *   목장 실천율 = 목장원 체크 수 합 / (목장원별 계수 일수 합 × 4). '계수 제외'인 사람은 빠진다.
  *
  * 관리자가 옮긴 사람은 '변경기록' 탭에 남고, 그 사람 휴대폰이 예전 목장·이름으로 보내도
  * 새 목장·이름으로 저장되며 휴대폰의 설정도 새 것으로 바뀐다.
@@ -31,12 +37,21 @@ var SHEET_NAME = '기록';
 var HEADER = ['날짜', '주시작', '목장', '이름'].concat(ITEM_LABELS, ['실천율', '수정시각']);
 var MOVES_SHEET = '변경기록';
 var MOVES_HEADER = ['이전 목장', '이전 이름', '새 목장', '새 이름', '변경시각'];
+var SETTINGS_SHEET = '계수설정';
+var SETTINGS_HEADER = ['목장', '이름', '계수 시작일', '계수 제외', '수정시각'];
 var TZ = 'Asia/Seoul';
+
+// 서비스 시작일: 이 날 이전은 실천율 계산에 넣지 않는다 (2026년은 10월부터)
+var SERVICE_START = '2026-10-01';
 
 function doGet(e) {
   var p = (e && e.parameter) || {};
   try {
-    if (p.action === 'summary') return json_(p.week ? weekSummary_(p.week) : monthSummary_(p.month));
+    if (p.action === 'summary') {
+      if (p.week) return json_(periodSummary_(weekRange_(p.week)));
+      if (p.month) return json_(periodSummary_(periodRange_('month', p.month + '-01')));
+      return json_(periodSummary_(periodRange_(p.period || 'month', today_())));
+    }
     if (p.action === 'mine') return json_(mine_(p.group, p.name, p.week, p.month));
     return json_({ ok: true, groups: GROUPS });
   } catch (err) {
@@ -96,62 +111,108 @@ function saveCheck_(b) {
   }
 }
 
-/**
- * 목장 실천율 = 목장원 전원의 기간 내 체크 수 / (목장원 수 × 지난 일수 × 4)
- * 목장원 = 그 목장으로 기간 끝까지 한 번이라도 기록한 사람. 기록하지 않은 날은 0으로 계산한다.
- * 지난 일수 = 진행 중인 기간이면 오늘까지, 지난 기간이면 기간 전체.
- */
-function aggregate_(start, end) {
-  var last = end < today_() ? end : today_();
-  var days = Math.max(1, Math.round((parse_(last) - parse_(start)) / 86400000) + 1);
-  var rows = rows_();
+/** 기간: month | quarter | year, anchor 날짜가 들어 있는 기간 */
+function periodRange_(period, anchor) {
+  var a = /^\d{4}-\d{2}-\d{2}$/.test(anchor || '') ? anchor : today_();
+  var y = +a.slice(0, 4), m = +a.slice(5, 7);
+  var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+  var lastDay = function (yy, mm) { return new Date(Date.UTC(yy, mm, 0)).getUTCDate(); };
+  if (period === 'year') {
+    return { period: 'year', start: y + '-01-01', end: y + '-12-31', label: y + '년' };
+  }
+  if (period === 'quarter') {
+    var q = Math.floor((m - 1) / 3);
+    var m1 = q * 3 + 1, m3 = q * 3 + 3;
+    return { period: 'quarter', start: y + '-' + pad(m1) + '-01', end: y + '-' + pad(m3) + '-' + pad(lastDay(y, m3)),
+      label: y + '년 ' + (q + 1) + '분기 (' + m1 + '~' + m3 + '월)' };
+  }
+  return { period: 'month', month: y + '-' + pad(m), start: y + '-' + pad(m) + '-01', end: y + '-' + pad(m) + '-' + pad(lastDay(y, m)),
+    label: y + '년 ' + m + '월' };
+}
 
-  var groups = GROUPS.map(function (g) {
-    var members = {};
-    var checked = 0;
-    var itemTotals = [0, 0, 0, 0];
-    rows.forEach(function (r) {
-      if (r.group !== g || r.date > end) return;
-      members[r.name] = true;
-      if (r.date < start) return;
-      ITEMS.forEach(function (k, i) { checked += r[k]; itemTotals[i] += r[k]; });
+function weekRange_(week) {
+  var start = weekStart_(week);
+  return { period: 'week', weekStart: start, start: start, end: addDays_(start, 6), label: start + ' 주간' };
+}
+
+function daysBetween_(a, b) {
+  return Math.round((parse_(b) - parse_(a)) / 86400000) + 1;
+}
+
+/**
+ * 기간 안의 사람별 집계. 사람마다 max(기간 시작, 계수 시작일) ~ min(기간 끝, 오늘)의 날만 센다.
+ * 계수 시작일 = 관리자가 정한 날, 없으면 처음 체크한 해의 1월 1일 (SERVICE_START보다 앞서지 않음).
+ */
+function computePeople_(range) {
+  var today = today_();
+  var last = range.end < today ? range.end : today;
+  var settings = settings_();
+  var map = {};
+  rows_().forEach(function (r) {
+    var k = r.group + '\u0000' + r.name;
+    var m = map[k] || (map[k] = { group: r.group, name: r.name, first: r.date, rows: [] });
+    if (r.date < m.first) m.first = r.date;
+    m.rows.push(r);
+  });
+  return Object.keys(map).map(function (k) {
+    var m = map[k];
+    var set = settings[k] || {};
+    var yearStart = m.first.slice(0, 4) + '-01-01';
+    var countStart = set.countStart || (yearStart > SERVICE_START ? yearStart : SERVICE_START);
+    var from = countStart > range.start ? countStart : range.start;
+    var eligible = from <= last ? daysBetween_(from, last) : 0;
+    var items = [0, 0, 0, 0], checks = 0, days = 0, lastDate = '';
+    m.rows.forEach(function (r) {
+      if (r.date < from || r.date > last) return;
+      var n = 0;
+      ITEMS.forEach(function (it, i) { items[i] += r[it]; n += r[it]; });
+      checks += n;
+      if (n > 0) { days++; if (r.date > lastDate) lastDate = r.date; }
     });
-    var memberCount = Object.keys(members).length;
-    var possible = memberCount * days;
+    return {
+      group: m.group, name: m.name, first: m.first,
+      countStart: countStart, countStartSet: set.countStart || '', excluded: !!set.excluded,
+      eligibleDays: eligible, checks: checks, days: days, last: lastDate, items: items,
+      rate: eligible ? checks / (eligible * ITEMS.length) : null
+    };
+  });
+}
+
+function groupTotals_(people) {
+  return GROUPS.map(function (g) {
+    var members = 0, possible = 0, checked = 0, items = [0, 0, 0, 0];
+    people.forEach(function (p) {
+      if (p.group !== g || p.excluded || !p.eligibleDays) return;
+      members++;
+      possible += p.eligibleDays;
+      checked += p.checks;
+      p.items.forEach(function (v, i) { items[i] += v; });
+    });
     return {
       group: g,
-      members: memberCount,
+      members: members,
       rate: possible ? checked / (possible * ITEMS.length) : 0,
       items: ITEM_LABELS.map(function (label, i) {
-        return { label: label, rate: possible ? itemTotals[i] / possible : 0 };
+        return { label: label, rate: possible ? items[i] / possible : 0 };
       })
     };
   });
-
-  return { ok: true, start: start, end: end, days: days, updatedAt: new Date().toISOString(), groups: groups };
 }
 
-function monthRange_(month) {
-  var ym = /^\d{4}-\d{2}$/.test(month || '') ? month : today_().slice(0, 7);
-  var start = ym + '-01';
-  var next = parse_(start);
-  next.setUTCMonth(next.getUTCMonth() + 1);
-  return { month: ym, start: start, end: addDays_(fmt_(next), -1) };
-}
-
-function monthSummary_(month) {
-  var r = monthRange_(month);
-  var out = aggregate_(r.start, r.end);
-  out.period = 'month';
-  out.month = r.month;
-  return out;
-}
-
-function weekSummary_(week) {
-  var start = weekStart_(week);
-  var out = aggregate_(start, addDays_(start, 6));
-  out.period = 'week';
-  out.weekStart = start;
+function periodSummary_(range) {
+  var today = today_();
+  var last = range.end < today ? range.end : today;
+  // 표시용 지난 일수도 서비스 시작일 이전은 세지 않음
+  var from = range.start > SERVICE_START ? range.start : SERVICE_START;
+  var out = {
+    ok: true, period: range.period, label: range.label, start: range.start, end: range.end,
+    countFrom: from,
+    days: last >= from ? daysBetween_(from, last) : 0,
+    updatedAt: new Date().toISOString(),
+    groups: groupTotals_(computePeople_(range))
+  };
+  if (range.month) out.month = range.month;
+  if (range.weekStart) out.weekStart = range.weekStart;
   return out;
 }
 
@@ -185,40 +246,48 @@ function admin_(b) {
     throw new Error('비밀번호가 맞지 않습니다.');
   }
   if (b.admin === 'login') return { ok: true };
-  if (b.admin === 'overview') return adminOverview_(b.month);
+  if (b.admin === 'overview') return adminOverview_(b.period, b.anchor || (b.month ? b.month + '-01' : ''));
   if (b.admin === 'move') return adminMove_(b.group, b.name, b.newGroup, b.newName);
   if (b.admin === 'delete') return adminDelete_(b.group, b.name);
+  if (b.admin === 'setting') return adminSetting_(b.group, b.name, b.countStart, b.excluded);
   throw new Error('알 수 없는 요청입니다.');
 }
 
-/** 목장별 현황 + 개인별 현황 (개인 실천율 = 이번 달 체크 수 / (지난 일수 × 4)) */
-function adminOverview_(month) {
-  var range = monthRange_(month);
-  var summary = aggregate_(range.start, range.end);
-  var map = {};
-  rows_().forEach(function (r) {
-    if (r.date > range.end) return;
-    var k = r.group + '\u0000' + r.name;
-    var m = map[k] || (map[k] = { group: r.group, name: r.name, first: r.date, last: '', checks: 0, days: 0, items: [0, 0, 0, 0] });
-    if (r.date < m.first) m.first = r.date;
-    if (r.date < range.start) return;
-    var n = 0;
-    ITEMS.forEach(function (it, i) { m.items[i] += r[it]; n += r[it]; });
-    m.checks += n;
-    if (n > 0) {
-      m.days++;
-      if (r.date > m.last) m.last = r.date;
-    }
-  });
-  var members = Object.keys(map).map(function (k) {
-    var m = map[k];
-    m.rate = m.checks / (summary.days * ITEMS.length);
-    return m;
-  });
+/** 목장별 현황 + 개인별 현황 (기간: 월·분기·연, anchor 날짜가 든 기간) */
+function adminOverview_(period, anchor) {
+  var range = periodRange_(period || 'month', anchor);
+  var people = computePeople_(range).filter(function (p) { return p.eligibleDays > 0 || p.checks > 0; });
+  var summary = periodSummary_(range);
   return {
-    ok: true, month: range.month, days: summary.days, groupNames: GROUPS,
-    groups: summary.groups, members: members, updatedAt: summary.updatedAt
+    ok: true, period: range.period, label: range.label, start: range.start, end: range.end,
+    countFrom: summary.countFrom, days: summary.days, groupNames: GROUPS, groups: groupTotals_(people), members: people,
+    updatedAt: summary.updatedAt
   };
+}
+
+/** 계수 시작일('' 이면 첫 체크일) · 계수 제외 */
+function adminSetting_(group, name, countStart, excluded) {
+  group = String(group || '').trim();
+  name = String(name || '').trim();
+  countStart = String(countStart || '').trim();
+  if (countStart && !/^\d{4}-\d{2}-\d{2}$/.test(countStart)) throw new Error('날짜 형식이 올바르지 않습니다.');
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var sheet = settingsSheet_();
+    var values = sheet.getDataRange().getValues();
+    for (var i = 1; i < values.length; i++) {
+      if (String(values[i][0]) === group && String(values[i][1]) === name) {
+        if (!countStart && !excluded) sheet.deleteRow(i + 1);
+        else sheet.getRange(i + 1, 1, 1, 5).setValues([[group, name, countStart, excluded ? 'Y' : '', new Date()]]);
+        return { ok: true };
+      }
+    }
+    if (countStart || excluded) sheet.appendRow([group, name, countStart, excluded ? 'Y' : '', new Date()]);
+    return { ok: true };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 /** 이름 바꾸기 / 목장 옮기기. 옮길 곳에 같은 날 기록이 있으면 체크를 합친다. */
@@ -267,6 +336,7 @@ function adminMove_(group, name, newGroup, newName) {
     if (!moved && !merged) throw new Error('해당하는 기록이 없습니다.');
     writeAll_(sheet, values.filter(function (_, k) { return !drop[k]; }), values.length, width);
     addMove_(group, name, newGroup, newName);
+    moveSetting_(group, name, newGroup, newName);
     return { ok: true, moved: moved, merged: merged };
   } finally {
     lock.releaseLock();
@@ -283,6 +353,7 @@ function adminDelete_(group, name) {
     var deleted = values.length - kept.length;
     if (!deleted) throw new Error('해당하는 기록이 없습니다.');
     writeAll_(sheet, kept, values.length, values[0].length);
+    moveSetting_(group, name, null, null);
     return { ok: true, deleted: deleted };
   } finally {
     lock.releaseLock();
@@ -293,6 +364,47 @@ function adminDelete_(group, name) {
 function writeAll_(sheet, rows, oldLength, width) {
   sheet.getRange(1, 1, oldLength, width).clearContent();
   sheet.getRange(1, 1, rows.length, width).setValues(rows);
+}
+
+// ---------- 계수설정 ----------
+
+function settingsSheet_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(SETTINGS_SHEET);
+  if (!sheet) {
+    sheet = ss.insertSheet(SETTINGS_SHEET);
+    sheet.appendRow(SETTINGS_HEADER);
+    sheet.setFrozenRows(1);
+    sheet.getRange('C:C').setNumberFormat('@');
+  }
+  return sheet;
+}
+
+/** '목장\u0000이름' -> { countStart, excluded } */
+function settings_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(SETTINGS_SHEET);
+  var out = {};
+  if (!sheet) return out;
+  sheet.getDataRange().getDisplayValues().slice(1).forEach(function (v) {
+    if (!v[0]) return;
+    out[v[0] + '\u0000' + v[1]] = { countStart: /^\d{4}-\d{2}-\d{2}$/.test(v[2]) ? v[2] : '', excluded: v[3] === 'Y' };
+  });
+  return out;
+}
+
+/** 옮긴 사람의 설정을 따라 옮김 (옮길 곳에 이미 설정이 있으면 그쪽 유지). newGroup이 null이면 삭제 */
+function moveSetting_(group, name, newGroup, newName) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(SETTINGS_SHEET);
+  if (!sheet) return;
+  var values = sheet.getDataRange().getValues();
+  var targetExists = newGroup !== null && values.some(function (v) { return String(v[0]) === newGroup && String(v[1]) === newName; });
+  for (var i = values.length - 1; i >= 1; i--) {
+    if (String(values[i][0]) !== group || String(values[i][1]) !== name) continue;
+    if (newGroup === null || targetExists) sheet.deleteRow(i + 1);
+    else sheet.getRange(i + 1, 1, 1, 2).setValues([[newGroup, newName]]);
+  }
 }
 
 // ---------- 목장·이름 변경 기록 ----------

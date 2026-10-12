@@ -65,6 +65,15 @@
   .month b { font-size: 20px; min-width: 130px; text-align: center; }
   .month .btn { width: 40px; height: 40px; padding: 0; font-size: 18px; }
   .meta { text-align: center; color: var(--ink-3); font-size: 12px; margin-bottom: 14px; }
+  .periods { display: flex; justify-content: center; gap: 4px; margin-top: 14px; }
+  .periods button { border: 1px solid var(--line); background: var(--card); padding: 7px 16px; border-radius: 999px; font-weight: 700; font-size: 14px; color: var(--ink-2); cursor: pointer; }
+  .periods button[aria-selected="true"] { background: var(--brown); border-color: var(--brown); color: #fff; }
+  .month b { font-size: 18px; min-width: 190px; }
+  .count-row { display: flex; gap: 8px; align-items: center; }
+  .count-row input[type=date] { flex: 1; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--soft); font-size: 15px; }
+  .check-line { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 14px; font-weight: 700; color: var(--ink-2); }
+  .check-line input { width: 18px; height: 18px; accent-color: var(--brown); }
+  .member.excluded { opacity: .6; }
 
   .tabs { display: flex; gap: 6px; background: #E9E2D6; padding: 4px; border-radius: 14px; margin-bottom: 14px; }
   .tabs button { flex: 1; border: 0; background: transparent; padding: 10px; border-radius: 10px; font-weight: 700; color: var(--ink-2); cursor: pointer; }
@@ -140,10 +149,15 @@
       </div>
     </div>
 
+    <div class="periods" role="tablist" aria-label="기간">
+      <button type="button" role="tab" data-p="month" aria-selected="true">월간</button>
+      <button type="button" role="tab" data-p="quarter" aria-selected="false">분기</button>
+      <button type="button" role="tab" data-p="year" aria-selected="false">연간</button>
+    </div>
     <div class="month">
-      <button class="btn" id="prev" type="button" aria-label="이전 달">‹</button>
+      <button class="btn" id="prev" type="button" aria-label="이전 기간">‹</button>
       <b id="month-label">2026년 10월</b>
-      <button class="btn" id="next" type="button" aria-label="다음 달">›</button>
+      <button class="btn" id="next" type="button" aria-label="다음 기간">›</button>
     </div>
     <div class="meta" id="meta"></div>
 
@@ -172,6 +186,14 @@
     <input id="edit-name" type="text" maxlength="20" required>
     <label class="field" for="edit-group">목장</label>
     <select id="edit-group"></select>
+
+    <label class="field" for="edit-start">계수 시작일 (이날부터 실천율 계산에 포함)</label>
+    <div class="count-row">
+      <input id="edit-start" type="date">
+      <button class="btn" type="button" id="edit-start-reset">기본값</button>
+    </div>
+    <div class="g-sub" id="edit-start-help" style="margin-top:6px"></div>
+    <label class="check-line"><input id="edit-excluded" type="checkbox"> 계수에서 제외 (기록은 남기고 실천율 계산에서만 뺌)</label>
 
     <div class="help">
       다른 목장으로 잘못 등록했다면 <b>목장만 바꿔 저장</b>하세요. 그분 휴대폰도 다음에 체크할 때 자동으로 새 목장으로 바뀝니다.<br>
@@ -211,7 +233,11 @@
 
   let key = store.get('seum_admin_key') || '';
   const now = new Date();
-  let viewY = now.getFullYear(), viewM = now.getMonth() + 1;
+  const pad = n => String(n).padStart(2, '0');
+  const TODAY = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  // 기간 + 그 기간 안의 아무 날짜(anchor). ‹ › 로 지난 기간을 볼 수 있다
+  let period = 'month';
+  let anchorY = now.getFullYear(), anchorM = now.getMonth() + 1;
   let data = null;
   let filterGroup = '';
   let editing = null;
@@ -269,13 +295,20 @@
 
   // ---------- 불러오기 ----------
   async function load() {
-    $('month-label').textContent = `${viewY}년 ${viewM}월`;
     $('app').classList.add('loading');
     try {
-      data = await api({ admin: 'overview', month: `${viewY}-${String(viewM).padStart(2, '0')}` });
-      const isNow = viewY === now.getFullYear() && viewM === now.getMonth() + 1;
-      $('meta').textContent = `${isNow ? `오늘까지 ${data.days}일` : `${data.days}일 전체`} 기준 · ` +
+      data = await api({ admin: 'overview', period, anchor: `${anchorY}-${pad(anchorM)}-01` });
+      let label = data.label || `${anchorY}년 ${anchorM}월`;
+      const beforeService = data.countFrom && data.countFrom > data.end;
+      if (!beforeService && data.countFrom && data.countFrom > data.start) label += ` (${+data.countFrom.slice(5, 7)}월부터)`;
+      $('month-label').textContent = label;
+      const running = data.start <= TODAY && TODAY <= data.end;
+      const future = data.start > TODAY;
+      $('meta').textContent = (beforeService ? '서비스 시작(2026년 10월) 전 기간'
+        : future ? '아직 시작 전인 기간'
+        : `${running ? `오늘까지 ${data.days}일` : `${data.days}일 전체`} 기준`) + ' · ' +
         new Date(data.updatedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) + ' 업데이트';
+      $('next').disabled = data.end >= TODAY;
       renderGroups();
       renderFilters();
       renderMembers();
@@ -332,21 +365,23 @@
       return;
     }
     const md = d => d ? `${+d.slice(5, 7)}/${+d.slice(8, 10)}` : '-';
+    const ymdText = d => d ? `${d.slice(2, 4)}.${+d.slice(5, 7)}.${+d.slice(8, 10)}` : '-';
     $('list').innerHTML = list.map((m, i) => {
       const dup = groupsByName[m.name].size > 1;
       return `
-      <article class="card member" style="--c:${colorOf(m.group)}">
+      <article class="card member ${m.excluded ? 'excluded' : ''}" style="--c:${colorOf(m.group)}">
         <div class="m-name">${esc(m.name)}
           <span class="tag"><span class="dot" style="display:inline-block;width:8px;height:8px;margin-right:4px"></span>${esc(m.group)}</span>
           ${dup ? '<span class="tag warn">다른 목장에도 같은 이름</span>' : ''}
+          ${m.excluded ? '<span class="tag">계수 제외</span>' : ''}
         </div>
-        <div class="m-rate">${pct(m.rate)}</div>
+        <div class="m-rate">${m.rate === null ? '-' : pct(m.rate)}</div>
         <div class="m-detail">
-          <div class="bar"><i style="width:${Math.min(100, m.rate * 100)}%"></i></div>
-          ${ITEM_LABELS.map((l, k) => `${l} ${m.items[k]}`).join(' · ')} &nbsp;|&nbsp; 체크한 날 ${m.days}/${data.days}일
+          <div class="bar"><i style="width:${Math.min(100, (m.rate || 0) * 100)}%"></i></div>
+          ${ITEM_LABELS.map((l, k) => `${l} ${m.items[k]}`).join(' · ')} &nbsp;|&nbsp; 체크한 날 ${m.days}/${m.eligibleDays}일
         </div>
         <div class="m-foot">
-          <span>마지막 체크 ${md(m.last)} · 처음 ${md(m.first)}</span>
+          <span>계수 시작 ${ymdText(m.countStart)}${m.countStartSet ? ' (직접 설정)' : ' (기본)'} · 마지막 체크 ${md(m.last)}</span>
           <button class="btn" type="button" data-i="${i}">수정</button>
         </div>
       </article>`;
@@ -361,24 +396,43 @@
     $('edit-sub').textContent = `${m.group} · 이번 달 체크 ${m.checks}개`;
     $('edit-name').value = m.name;
     $('edit-group').innerHTML = data.groupNames.map(g => `<option ${g === m.group ? 'selected' : ''}>${esc(g)}</option>`).join('');
+    $('edit-start').value = m.countStartSet || '';
+    $('edit-excluded').checked = !!m.excluded;
+    $('edit-start-help').textContent = `비워두면 기본값: 처음 체크한 해의 1월 1일 (2026년은 10월 1일) · 지금 적용: ${m.countStart}`;
     $('edit').showModal();
   }
 
   $('edit-cancel').addEventListener('click', () => $('edit').close());
+  $('edit-start-reset').addEventListener('click', () => { $('edit-start').value = ''; });
 
   $('edit-save').addEventListener('click', async () => {
     const newName = $('edit-name').value.trim();
     const newGroup = $('edit-group').value;
+    const countStart = $('edit-start').value;
+    const excluded = $('edit-excluded').checked;
     if (!newName) return toast('이름을 입력해 주세요.');
-    if (newName === editing.name && newGroup === editing.group) return $('edit').close();
-    const what = newGroup !== editing.group ? `${editing.group} → ${newGroup}` : '';
-    const rename = newName !== editing.name ? `${editing.name} → ${newName}` : '';
-    if (!confirm(`다음과 같이 바꿀까요?\n\n${[what, rename].filter(Boolean).join('\n')}`)) return;
+    const moving = newName !== editing.name || newGroup !== editing.group;
+    const setting = countStart !== (editing.countStartSet || '') || excluded !== !!editing.excluded;
+    if (!moving && !setting) return $('edit').close();
+    const lines = [];
+    if (newGroup !== editing.group) lines.push(`목장: ${editing.group} → ${newGroup}`);
+    if (newName !== editing.name) lines.push(`이름: ${editing.name} → ${newName}`);
+    if (countStart !== (editing.countStartSet || '')) lines.push(`계수 시작일: ${countStart || '기본값'}`);
+    if (excluded !== !!editing.excluded) lines.push(excluded ? '계수에서 제외' : '계수에 다시 포함');
+    if (!confirm(`다음과 같이 바꿀까요?\n\n${lines.join('\n')}`)) return;
     $('edit-form').classList.add('loading');
     try {
-      const out = await api({ admin: 'move', group: editing.group, name: editing.name, newGroup, newName });
+      const msgs = [];
+      if (moving) {
+        const out = await api({ admin: 'move', group: editing.group, name: editing.name, newGroup, newName });
+        msgs.push(`옮긴 기록 ${out.moved}건${out.merged ? `, 합친 기록 ${out.merged}건` : ''}`);
+      }
+      if (setting) {
+        await api({ admin: 'setting', group: newGroup, name: newName, countStart, excluded });
+        msgs.push('계수 설정 저장');
+      }
       $('edit').close();
-      toast(`바꿨습니다 (옮긴 기록 ${out.moved}건${out.merged ? `, 합친 기록 ${out.merged}건` : ''})`);
+      toast(`바꿨습니다 (${msgs.join(', ')})`);
       load();
     } catch (err) {
       toast('실패: ' + err.message);
@@ -415,8 +469,23 @@
   $('tab-members').addEventListener('click', () => selectTab('members'));
   $('search').addEventListener('input', () => data && renderMembers());
   $('refresh').addEventListener('click', load);
-  $('prev').addEventListener('click', () => { viewM--; if (viewM < 1) { viewM = 12; viewY--; } load(); });
-  $('next').addEventListener('click', () => { viewM++; if (viewM > 12) { viewM = 1; viewY++; } load(); });
+  function shift(dir) {
+    const step = period === 'year' ? 12 : period === 'quarter' ? 3 : 1;
+    const idx = anchorY * 12 + (anchorM - 1) + dir * step;
+    anchorY = Math.floor(idx / 12);
+    anchorM = idx % 12 + 1;
+    load();
+  }
+  $('prev').addEventListener('click', () => shift(-1));
+  $('next').addEventListener('click', () => shift(1));
+  document.querySelectorAll('.periods button').forEach(btn => btn.addEventListener('click', () => {
+    period = btn.dataset.p;
+    document.querySelectorAll('.periods button').forEach(b => b.setAttribute('aria-selected', b === btn));
+    // 기간을 바꾸면 오늘이 든 기간부터 다시 본다
+    anchorY = now.getFullYear();
+    anchorM = now.getMonth() + 1;
+    load();
+  }));
 
   if (key) showApp();
 </script>
