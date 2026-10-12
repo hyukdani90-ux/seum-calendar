@@ -7,6 +7,7 @@
  * POST  { group, name, date: "YYYY-MM-DD", word, prayer, reading, worship }  -> 기록 저장(같은 날 재입력 시 덮어씀)
  * POST  { group, name, records: [{ date, word, prayer, reading, worship }, ...] } -> 여러 날 한 번에 저장
  * GET   ?action=summary[&period=month|quarter|year]                           -> 목장별 이번 달/분기/해 실천율 (기본: 월간)
+ * GET   ?action=summary&period=all                                            -> 위 셋을 한 번에 (믿음의 경주 화면용, 1분 저장)
  * GET   ?action=summary&month=YYYY-MM | &week=YYYY-MM-DD                      -> 특정 달 / 주
  * GET   ?action=mine&group=..&name=..[&week=YYYY-MM-DD | &month=YYYY-MM]       -> 내 기록(체크 달력 복원용)
  *
@@ -51,6 +52,7 @@ function doGet(e) {
     if (p.action === 'summary') {
       if (p.week) return json_(periodSummary_(weekRange_(p.week)));
       if (p.month) return json_(periodSummary_(periodRange_('month', p.month + '-01')));
+      if (p.period === 'all') return json_(allSummaries_());
       return json_(periodSummary_(periodRange_(p.period || 'month', today_())));
     }
     if (p.action === 'mine') return json_(mine_(p.group, p.name, p.week, p.month));
@@ -102,10 +104,12 @@ function saveCheck_(b) {
     for (var i = 1; i < values.length; i++) {
       if (values[i][0] === date && values[i][2] === group && values[i][3] === name) {
         sheet.getRange(i + 1, 1, 1, row.length).setValues([row]);
+        bustCache_();
         return { ok: true, updated: true, rate: rate, profile: who };
       }
     }
     sheet.appendRow(row);
+    bustCache_();
     return { ok: true, updated: false, rate: rate, profile: who };
   } finally {
     lock.releaseLock();
@@ -145,12 +149,17 @@ function daysBetween_(a, b) {
  * (월간 31일 → 124, 4분기 92일 → 368, 1년 365일 → 1460. 개인 체크 화면의 '전체 실천율'과 같은 기준)
  * 계수 시작일 = 관리자가 정한 날, 없으면 처음 체크한 해의 1월 1일 (SERVICE_START보다 앞서지 않음).
  */
-function computePeople_(range) {
+function loadData_() {
+  return { rows: rows_(), settings: settings_() };
+}
+
+function computePeople_(range, data) {
+  data = data || loadData_();
   var today = today_();
   var last = range.end < today ? range.end : today;
-  var settings = settings_();
+  var settings = data.settings;
   var map = {};
-  rows_().forEach(function (r) {
+  data.rows.forEach(function (r) {
     var k = r.group + '\u0000' + r.name;
     var m = map[k] || (map[k] = { group: r.group, name: r.name, first: r.date, rows: [] });
     if (r.date < m.first) m.first = r.date;
@@ -203,7 +212,7 @@ function groupTotals_(people) {
   });
 }
 
-function periodSummary_(range) {
+function periodSummary_(range, data) {
   var today = today_();
   var last = range.end < today ? range.end : today;
   // 표시용 지난 일수도 서비스 시작일 이전은 세지 않음
@@ -214,11 +223,32 @@ function periodSummary_(range) {
     days: last >= from ? daysBetween_(from, last) : 0,
     totalDays: range.end >= from ? daysBetween_(from, range.end) : 0,
     updatedAt: new Date().toISOString(),
-    groups: groupTotals_(computePeople_(range))
+    groups: groupTotals_(computePeople_(range, data))
   };
   if (range.month) out.month = range.month;
   if (range.weekStart) out.weekStart = range.weekStart;
   return out;
+}
+
+// 이번 달·분기·해를 한 번에. 계산 결과를 1분 동안 저장해 두고, 기록이 바뀌면 바로 지운다
+var SUMMARY_CACHE_KEY = 'summary_all';
+
+function allSummaries_() {
+  var cache = CacheService.getScriptCache();
+  var hit = cache.get(SUMMARY_CACHE_KEY);
+  if (hit) return JSON.parse(hit);
+  var data = loadData_();
+  var today = today_();
+  var out = { ok: true, periods: {} };
+  ['month', 'quarter', 'year'].forEach(function (per) {
+    out.periods[per] = periodSummary_(periodRange_(per, today), data);
+  });
+  try { cache.put(SUMMARY_CACHE_KEY, JSON.stringify(out), 60); } catch (e) {}
+  return out;
+}
+
+function bustCache_() {
+  try { CacheService.getScriptCache().remove(SUMMARY_CACHE_KEY); } catch (e) {}
 }
 
 function mine_(group, name, week, month) {
@@ -252,17 +282,23 @@ function admin_(b) {
   }
   if (b.admin === 'login') return { ok: true };
   if (b.admin === 'overview') return adminOverview_(b.period, b.anchor || (b.month ? b.month + '-01' : ''));
-  if (b.admin === 'move') return adminMove_(b.group, b.name, b.newGroup, b.newName);
-  if (b.admin === 'delete') return adminDelete_(b.group, b.name);
-  if (b.admin === 'setting') return adminSetting_(b.group, b.name, b.countStart, b.excluded);
+  var out;
+  if (b.admin === 'move') out = adminMove_(b.group, b.name, b.newGroup, b.newName);
+  else if (b.admin === 'delete') out = adminDelete_(b.group, b.name);
+  else if (b.admin === 'setting') out = adminSetting_(b.group, b.name, b.countStart, b.excluded);
+  if (out) {
+    bustCache_(); // 바뀐 내용이 믿음의 경주에 바로 보이도록
+    return out;
+  }
   throw new Error('알 수 없는 요청입니다.');
 }
 
 /** 목장별 현황 + 개인별 현황 (기간: 월·분기·연, anchor 날짜가 든 기간) */
 function adminOverview_(period, anchor) {
   var range = periodRange_(period || 'month', anchor);
-  var people = computePeople_(range).filter(function (p) { return p.targetDays > 0 || p.checks > 0; });
-  var summary = periodSummary_(range);
+  var data = loadData_();
+  var people = computePeople_(range, data).filter(function (p) { return p.targetDays > 0 || p.checks > 0; });
+  var summary = periodSummary_(range, data);
   return {
     ok: true, period: range.period, label: range.label, start: range.start, end: range.end,
     countFrom: summary.countFrom, days: summary.days, totalDays: summary.totalDays, groupNames: GROUPS, groups: groupTotals_(people), members: people,

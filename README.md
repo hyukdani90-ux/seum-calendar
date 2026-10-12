@@ -58,6 +58,7 @@ BOOKS: {
 POST {URL}   { group, name, date, word, prayer, reading, worship }        하루 저장 (같은 날은 덮어씀)
 POST {URL}   { group, name, records: [{ date, word, ... }, ...] }          여러 날 한 번에
 GET  {URL}?action=summary[&period=month|quarter|year]                      목장별 이번 달/분기/해 실천율 (기본: 월간)
+GET  {URL}?action=summary&period=all                                       위 셋을 한 번에 (믿음의 경주용, 시트 쪽에서 1분 저장)
 GET  {URL}?action=summary&month=YYYY-MM | &week=YYYY-MM-DD                 특정 달 / 주
 GET  {URL}?action=mine&group=..&name=..&month=YYYY-MM                      내 한 달 기록
 ```

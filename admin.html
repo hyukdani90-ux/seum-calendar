@@ -294,30 +294,43 @@
   }
 
   // ---------- 불러오기 ----------
+  // 한 번 본 기간은 바로 보여주고, 뒤에서 새 숫자를 받아 고친다
+  const seen = new Map();
+  function clearSeen() { seen.clear(); }
+
   async function load() {
-    $('app').classList.add('loading');
+    const k = `${period}|${anchorY}-${pad(anchorM)}`;
+    if (seen.has(k)) { data = seen.get(k); show(); }
+    else $('app').classList.add('loading');
     try {
-      data = await api({ admin: 'overview', period, anchor: `${anchorY}-${pad(anchorM)}-01` });
-      let label = data.label || `${anchorY}년 ${anchorM}월`;
-      const beforeService = data.countFrom && data.countFrom > data.end;
-      if (!beforeService && data.countFrom && data.countFrom > data.start) label += ` (${+data.countFrom.slice(5, 7)}월부터)`;
-      $('month-label').textContent = label;
-      const running = data.start <= TODAY && TODAY <= data.end;
-      const future = data.start > TODAY;
-      $('meta').textContent = (beforeService ? '서비스 시작(2026년 10월) 전 기간'
-        : future ? '아직 시작 전인 기간'
-        : `목표 ${data.totalDays}일 × 4${running ? ` · 오늘 ${data.days}일째` : ''}`) + ' · ' +
-        new Date(data.updatedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) + ' 업데이트';
-      $('next').disabled = data.end >= TODAY;
-      renderGroups();
-      renderFilters();
-      renderMembers();
+      const fresh = await api({ admin: 'overview', period, anchor: `${anchorY}-${pad(anchorM)}-01` });
+      seen.set(k, fresh);
+      if (k !== `${period}|${anchorY}-${pad(anchorM)}`) return; // 그 사이 다른 기간으로 넘겼으면 버림
+      data = fresh;
+      show();
     } catch (err) {
       if (/비밀번호/.test(err.message)) { $('logout').click(); $('login-error').textContent = err.message; return; }
       toast('불러오기 실패: ' + err.message);
     } finally {
       $('app').classList.remove('loading');
     }
+  }
+
+  function show() {
+    let label = data.label || `${anchorY}년 ${anchorM}월`;
+    const beforeService = data.countFrom && data.countFrom > data.end;
+    if (!beforeService && data.countFrom && data.countFrom > data.start) label += ` (${+data.countFrom.slice(5, 7)}월부터)`;
+    $('month-label').textContent = label;
+    const running = data.start <= TODAY && TODAY <= data.end;
+    const future = data.start > TODAY;
+    $('meta').textContent = (beforeService ? '서비스 시작(2026년 10월) 전 기간'
+      : future ? '아직 시작 전인 기간'
+      : `목표 ${data.totalDays}일 × 4${running ? ` · 오늘 ${data.days}일째` : ''}`) + ' · ' +
+      new Date(data.updatedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) + ' 업데이트';
+    $('next').disabled = data.end >= TODAY;
+    renderGroups();
+    renderFilters();
+    renderMembers();
   }
 
   function colorOf(group) {
@@ -434,6 +447,7 @@
       }
       $('edit').close();
       toast(`바꿨습니다 (${msgs.join(', ')})`);
+      clearSeen();
       load();
     } catch (err) {
       toast('실패: ' + err.message);
@@ -451,6 +465,7 @@
       const out = await api({ admin: 'delete', group: editing.group, name: editing.name });
       $('edit').close();
       toast(`삭제했습니다 (${out.deleted}건)`);
+      clearSeen();
       load();
     } catch (err) {
       toast('실패: ' + err.message);
@@ -469,7 +484,7 @@
   $('tab-groups').addEventListener('click', () => selectTab('groups'));
   $('tab-members').addEventListener('click', () => selectTab('members'));
   $('search').addEventListener('input', () => data && renderMembers());
-  $('refresh').addEventListener('click', load);
+  $('refresh').addEventListener('click', () => { clearSeen(); load(); });
   function shift(dir) {
     const step = period === 'year' ? 12 : period === 'quarter' ? 3 : 1;
     const idx = anchorY * 12 + (anchorM - 1) + dir * step;

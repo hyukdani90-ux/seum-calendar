@@ -86,6 +86,7 @@
     border: 0; background: transparent; color: var(--text-secondary); font: inherit; font-size: 14px; font-weight: 700;
     padding: 7px 16px; border-radius: 9px; cursor: pointer;
   }
+  .card.loading { opacity: .5; transition: opacity .2s; }
   .periods button[aria-selected="true"] { background: var(--surface-1); color: var(--text-primary); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
   .demo { color: var(--text-secondary); font-weight: 600; }
 
@@ -102,7 +103,7 @@
   /* 트랙: 오른쪽에 결승선, 막대 끝에 달리는 캐릭터 */
   .track { position: relative; height: 66px; margin-right: 14px; }
   .track-bg { position: absolute; left: 0; right: 0; bottom: 6px; height: 12px; border-radius: 4px; background: var(--track); }
-  .bar { position: absolute; left: 0; bottom: 6px; height: 12px; border-radius: 4px; background: var(--c); width: 0; transition: width 2.4s cubic-bezier(.2,.7,.25,1); }
+  .bar { position: absolute; left: 0; bottom: 6px; height: 12px; border-radius: 4px; background: var(--c); width: 0; transition: width var(--dur, 2.4s) cubic-bezier(.2,.7,.25,1); }
   .finish {
     position: absolute; right: -14px; bottom: 0; width: 10px; height: 66px; border-radius: 2px;
     background: repeating-conic-gradient(var(--finish-a) 0 25%, var(--finish-b) 0 50%) 0 0 / 10px 10px;
@@ -115,7 +116,7 @@
     -webkit-mask: url(assets/runner.svg) 0 0 / 396px 58px no-repeat;
             mask: url(assets/runner.svg) 0 0 / 396px 58px no-repeat;
     animation: run .72s steps(9) infinite, bob .36s ease-in-out infinite;
-    transition: left 2.4s cubic-bezier(.2,.7,.25,1); pointer-events: none;
+    transition: left var(--dur, 2.4s) cubic-bezier(.2,.7,.25,1); pointer-events: none;
   }
   @keyframes run { to { -webkit-mask-position: -396px 0; mask-position: -396px 0; } }
   @keyframes bob { 0%,100% { translate: 0 0; } 50% { translate: 0 -2px; } }
@@ -229,7 +230,11 @@
       `<span><i class="swatch" style="--c:${COLORS[i % COLORS.length]}"></i>${g.group}</span>`).join('');
   }
 
-  function render(data) {
+  // quick: 탭을 바꾸거나 새로고침할 때는 짧게 움직인다 (처음 열 때만 천천히)
+  function render(data, quick) {
+    const ms = quick ? 800 : 2400;
+    $('lanes').style.setProperty('--dur', ms + 'ms');
+    document.querySelector('section.card').classList.remove('loading');
     const groups = data.groups || [];
     const existing = [...document.querySelectorAll('.lane')].map(l => l.dataset.group).join('|');
     if (existing !== groups.map(g => g.group).join('|')) buildLanes(groups);
@@ -239,7 +244,7 @@
       lane._data = g;
       const rate = Math.max(0, Math.min(1, g.rate || 0));
       lane.querySelector('[data-k="members"]').textContent = `${g.members}명`;
-      animateNumber(lane.querySelector('[data-k="rate"]'), rate);
+      animateNumber(lane.querySelector('[data-k="rate"]'), rate, ms);
       lane.querySelector('.bar').style.width = (rate * 100) + '%';
       const runner = lane.querySelector('.runner');
       // 0% 근처에서도 캐릭터가 카드 밖으로 나가지 않게
@@ -247,7 +252,8 @@
       runner.classList.remove('idle', 'done');
       if (rate === 0) runner.classList.add('idle');
       // 도착 애니메이션은 막대가 다 자란 뒤에
-      if (rate >= 1) setTimeout(() => runner.classList.add('done'), 2400);
+      clearTimeout(lane._doneTimer);
+      if (rate >= 1) lane._doneTimer = setTimeout(() => runner.classList.add('done'), ms);
     });
 
     $('period').textContent = periodText(data);
@@ -259,8 +265,8 @@
       groups.map(g => `<tr><td>${g.group}</td><td>${g.members}</td>${g.items.map(it => `<td>${pct(it.rate)}</td>`).join('')}<td><b>${pct(g.rate)}</b></td></tr>`).join('');
   }
 
-  function animateNumber(el, to) {
-    const from = el._v || 0, t0 = performance.now(), dur = 2400;
+  function animateNumber(el, to, dur = 2400) {
+    const from = el._v || 0, t0 = performance.now();
     el._v = to;
     const step = now => {
       const p = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - p, 3);
@@ -304,29 +310,47 @@
   // 기간 탭: 페이지를 열 때마다 월간으로 시작하고, 고른 기간은 기억하지 않는다
   let period = 'month';
   let loadSeq = 0;
+  let loadedOnce = false;
+  // 월간·분기·연간을 한 번에 받아 두고, 탭을 바꾸면 기다리지 않고 바로 보여준다
+  const cache = {};
   document.querySelectorAll('.periods button').forEach(btn => btn.addEventListener('click', () => {
     if (btn.dataset.p === period) return;
     period = btn.dataset.p;
     document.querySelectorAll('.periods button').forEach(b => b.setAttribute('aria-selected', b === btn));
+    if (cache[period]) return render(cache[period], true);
+    document.querySelector('section.card').classList.add('loading');
+    $('period').textContent = '불러오는 중…';
     load();
   }));
+
+  async function fetchJson(query) {
+    const res = await fetch(API_URL + (API_URL.includes('?') ? '&' : '?') + query);
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || '불러오기 실패');
+    return data;
+  }
 
   async function load() {
     if (!API_URL) {
       $('demo').hidden = false;
       const labels = { month: '2026년 10월', quarter: '2026년 4분기 (10~12월)', year: '2026년' };
-      render(Object.assign({}, DEMO, { period, label: labels[period] }));
+      render(Object.assign({}, DEMO, { period, label: labels[period] }), loadedOnce);
+      loadedOnce = true;
       return;
     }
     const seq = ++loadSeq;
     try {
-      const res = await fetch(API_URL + (API_URL.includes('?') ? '&' : '?') + 'action=summary&period=' + period);
-      const data = await res.json();
+      const all = await fetchJson('action=summary&period=all');
+      if (all.periods) Object.assign(cache, all.periods);
+      // 시트 코드가 예전 버전이면 기간별로 따로 받는다
+      else cache[period] = await fetchJson('action=summary&period=' + period);
       if (seq !== loadSeq) return; // 그 사이 다른 탭을 눌렀으면 버림
-      if (!data.ok) throw new Error(data.error || '불러오기 실패');
       $('error').hidden = true;
-      render(data);
+      render(cache[period], loadedOnce);
+      loadedOnce = true;
     } catch (err) {
+      document.querySelector('section.card').classList.remove('loading');
+      if (cache[period]) $('period').textContent = periodText(cache[period]);
       $('error').hidden = false;
       $('error').textContent = '데이터를 불러오지 못했습니다. 잠시 후 다시 시도합니다. (' + err.message + ')';
     }
